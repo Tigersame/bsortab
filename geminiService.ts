@@ -1,12 +1,11 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 export async function analyzeAlphaFeed(trades: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "Alpha feed initialization in progress...";
+  // Fix: Use process.env.API_KEY exclusively as per guidelines
+  if (!process.env.API_KEY) return "Alpha feed initialization in progress...";
   
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Summarize this on-chain trade activity into a sharp, viral-style 2-sentence alpha alert for a social trading app. Mention potential whale movements or trends. Data: ${trades}`,
@@ -24,11 +23,11 @@ export async function analyzeAlphaFeed(trades: string): Promise<string> {
 }
 
 export async function checkTokenSafety(tokenName: string, creator: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "Safety engine warming up...";
+  // Fix: Use process.env.API_KEY exclusively as per guidelines
+  if (!process.env.API_KEY) return "Safety engine warming up...";
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Quick vibe check for token ${tokenName} by ${creator}. Is this high risk, a potential moonshot, or a typical community token? Be concise.`,
@@ -44,11 +43,11 @@ export async function checkTokenSafety(tokenName: string, creator: string): Prom
 }
 
 export async function generateTokenManifesto(name: string, symbol: string, theme: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return "Manifesto generation unavailable.";
+  // Fix: Use process.env.API_KEY exclusively as per guidelines
+  if (!process.env.API_KEY) return "Manifesto generation unavailable.";
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Write a short, viral, 1-sentence manifesto (max 15 words) for a new crypto token named "${name}" ($${symbol}). The theme/vibe is: "${theme}". Use emoji to make it pop. It should feel like a TikTok caption.`,
@@ -63,8 +62,6 @@ export async function generateTokenManifesto(name: string, symbol: string, theme
 }
 
 export async function generateTokenMetadata(prompt: string): Promise<{ name: string; symbol: string; description: string }> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  
   // Default fallback if no key
   const fallback = {
     name: "Based Token",
@@ -72,10 +69,11 @@ export async function generateTokenMetadata(prompt: string): Promise<{ name: str
     description: "A community token launched on Base."
   };
 
-  if (!apiKey) return fallback;
+  // Fix: Use process.env.API_KEY exclusively as per guidelines
+  if (!process.env.API_KEY) return fallback;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Generate a creative crypto token based on this user idea: "${prompt}". 
