@@ -71,7 +71,7 @@ const App: React.FC = () => {
     awardXp('CONNECT_WALLET');
   };
 
-  const apiKey = process.env.API_KEY || '';
+  const onchainKitKey = process.env.ONCHAINKIT_API_KEY || '';
 
   const awardXp = useCallback((action: string) => {
       const amount = XP_REWARDS[action as keyof typeof XP_REWARDS] || 0;
@@ -174,7 +174,7 @@ const App: React.FC = () => {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <OnchainKitProvider chain={base} apiKey={apiKey}>
+        <OnchainKitProvider chain={base} apiKey={onchainKitKey}>
            {showOnboarding ? (
              <Onboarding onComplete={handleOnboardingComplete} />
            ) : (

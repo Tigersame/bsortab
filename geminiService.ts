@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 export async function analyzeAlphaFeed(trades: string): Promise<string> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return "Alpha feed initialization in progress...";
   
   try {
@@ -24,7 +24,7 @@ export async function analyzeAlphaFeed(trades: string): Promise<string> {
 }
 
 export async function checkTokenSafety(tokenName: string, creator: string): Promise<string> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return "Safety engine warming up...";
 
   try {
@@ -44,7 +44,7 @@ export async function checkTokenSafety(tokenName: string, creator: string): Prom
 }
 
 export async function generateTokenManifesto(name: string, symbol: string, theme: string): Promise<string> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return "Manifesto generation unavailable.";
 
   try {
@@ -63,7 +63,7 @@ export async function generateTokenManifesto(name: string, symbol: string, theme
 }
 
 export async function generateTokenMetadata(prompt: string): Promise<{ name: string; symbol: string; description: string }> {
-  const apiKey = process.env.API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   
   // Default fallback if no key
   const fallback = {
