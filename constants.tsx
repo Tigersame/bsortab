@@ -1,4 +1,3 @@
-
 import { Token, Trade, UserProfile, PortfolioHistory } from './types';
 
 export const XP_REWARDS = {
@@ -26,134 +25,195 @@ export const TIER_THRESHOLDS = {
   ELITE: 100000,
 };
 
-export const MOCK_TOKENS: Token[] = [
+// Real Base Mainnet Tokens
+export const BASE_TOKENS: Token[] = [
   { 
     symbol: 'ETH', 
     name: 'Ethereum', 
-    price: 2650.00, 
-    change24h: 1.2, 
-    marketCap: 320000000000, 
-    volume24h: 15000000000, 
+    price: 0, // Dynamic fetch required in prod
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
     creator: 'Vitalik', 
     socialScore: 99,
     address: '', // Native
     decimals: 18,
     logoUrl: 'https://token-icons.s3.amazonaws.com/eth.png',
     description: "The L1 foundation. Unshakable, decentralized, and the bedrock of Base.",
-    tags: ['L1', 'BlueChip', 'Safe']
+    tags: ['L1', 'BlueChip', 'Gas']
+  },
+  { 
+    symbol: 'WETH', 
+    name: 'Wrapped Ether', 
+    price: 0, 
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
+    creator: 'Protocol', 
+    socialScore: 95,
+    address: '0x4200000000000000000000000000000000000006',
+    decimals: 18,
+    logoUrl: 'https://token-icons.s3.amazonaws.com/eth.png',
+    description: "ERC-20 compliant Ether. Essential for trading on Base dApps.",
+    tags: ['Utility', 'DeFi']
   },
   { 
     symbol: 'USDC', 
     name: 'USD Coin', 
     price: 1.00, 
-    change24h: 0.01, 
-    marketCap: 5000000000, 
-    volume24h: 500000000, 
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
     creator: 'Circle', 
-    socialScore: 95,
+    socialScore: 98,
     address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     decimals: 6,
     logoUrl: 'https://token-icons.s3.amazonaws.com/usdc.png',
     description: "Digital Dollar. Stable, liquid, and ready for deployment.",
-    tags: ['Stable', 'Utility']
-  },
-  { 
-    symbol: 'WETH', 
-    name: 'Wrapped Ether', 
-    price: 2650.00, 
-    change24h: 1.2, 
-    marketCap: 1000000000, 
-    volume24h: 50000000, 
-    creator: 'Protocol', 
-    socialScore: 90,
-    address: '0x4200000000000000000000000000000000000006',
-    decimals: 18,
-    description: "ERC-20 compliant Ether. Essential for trading on Base dApps.",
-    tags: ['Utility', 'DeFi']
+    tags: ['Stable', 'Liquidity']
   },
   { 
     symbol: 'DEGEN', 
     name: 'Degen', 
-    price: 0.008, 
-    change24h: -5.4, 
-    marketCap: 100000000, 
-    volume24h: 2000000, 
-    creator: '0xDegen', 
-    socialScore: 88,
+    price: 0, 
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
+    creator: 'Jacek', 
+    socialScore: 92,
     address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
     decimals: 18,
-    description: "The community token of Farcaster. Born from a /channel, now a movement. High volatility, high vibes.",
-    tags: ['Community', 'Farcaster', 'Meme']
+    logoUrl: 'https://dd.dexscreener.com/ds-data/tokens/base/0x4ed4e862860bed51a9570b96d89af5e1b0efefed.png',
+    description: "The community token of Farcaster. Born from a /channel, now a movement.",
+    tags: ['Community', 'Farcaster', 'Social']
   },
   { 
     symbol: 'BRETT', 
     name: 'Brett', 
-    price: 0.07, 
-    change24h: 12.1, 
-    marketCap: 700000000, 
-    volume24h: 15000000, 
-    creator: '0xBrett', 
+    price: 0, 
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
+    creator: 'Based', 
     socialScore: 94,
     address: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
     decimals: 18,
+    logoUrl: 'https://dd.dexscreener.com/ds-data/tokens/base/0x532f27101965dd16442e59d40670faf5ebb142e4.png',
     description: "Pepe's best friend on Base. The mascot of the blue chain.",
-    tags: ['Meme', 'Mascot', 'Trending']
+    tags: ['Meme', 'Mascot', 'BlueChip']
   },
   { 
-    symbol: 'CLANKER', 
-    name: 'Clanker Alpha', 
-    price: 12.4, 
-    change24h: 22.5, 
-    marketCap: 12000000, 
-    volume24h: 1500000, 
-    creator: '0xAl...ph', 
-    socialScore: 92,
-    address: '0x1bc182e4c5b425717647207622616f94747c3561', // Placeholder
+    symbol: 'AERO', 
+    name: 'Aerodrome', 
+    price: 0, 
+    change24h: 0, 
+    marketCap: 0, 
+    volume24h: 0, 
+    creator: 'Aerodrome', 
+    socialScore: 90,
+    address: '0x940181a94a35a45bdc333bf04718c3c1b1e292ba',
     decimals: 18,
-    description: "AI-deployed token experiment. The machines are winning, and they are profitable.",
-    tags: ['AI', 'Experimental', 'Alpha']
-  },
+    logoUrl: 'https://dd.dexscreener.com/ds-data/tokens/base/0x940181a94a35a45bdc333bf04718c3c1b1e292ba.png',
+    description: "The central liquidity hub of Base. Vote, bribe, and earn.",
+    tags: ['DeFi', 'Dex', 'Yield']
+  }
 ];
 
-export const MOCK_TRADES: Trade[] = [
-  { id: '1', wallet: '0xAlpha...92', type: 'buy', tokenSymbol: 'DEGEN', amount: 500000, valueUsd: 22500, timestamp: Date.now() - 60000, rank: 'Alpha', reputationScore: 940 },
-  { id: '2', wallet: '0xWhale...ff', type: 'lp_add', tokenSymbol: 'CLANKER', amount: 100, valueUsd: 50000, timestamp: Date.now() - 300000, rank: 'Whale', reputationScore: 880 },
-  { id: '4', wallet: '0xTop...12', type: 'ath', tokenSymbol: 'BRETT', amount: 0, valueUsd: 0, timestamp: Date.now() - 900000, rank: 'Alpha', reputationScore: 999 },
-];
-
-export const INITIAL_USER: UserProfile = {
-  address: '0x38...2b1a',
-  fid: 12842,
-  username: 'BaseExplorer_42',
-  xp: 12500,
-  pendingXp: 450,
-  level: 12,
-  tier: 'SILVER',
-  reputation: 842,
-  badges: ['Early Adopter', 'Alpha Hunter', 'Clanker Pro'],
-  followers: 452,
-  winRate: 68.2,
-  totalVolume: 125000,
-  pnlNet: 4200.50,
+// Empty initial state for production
+export const EMPTY_USER: UserProfile = {
+  address: '',
+  username: '',
+  xp: 0,
+  pendingXp: 0,
+  level: 1,
+  tier: 'BRONZE',
+  reputation: 100,
+  badges: [],
+  followers: 0,
+  winRate: 0,
+  totalVolume: 0,
+  pnlNet: 0,
   notificationsEnabled: false,
-  xpHistory: [
-    { id: '1', action: 'SWAP', amount: 50, timestamp: Date.now() - 100000 },
-    { id: '2', action: 'DAILY_GM', amount: 10, timestamp: Date.now() - 200000 },
-  ],
+  xpHistory: [],
 };
 
-export const MOCK_LEADERBOARD: UserProfile[] = [
-  { address: '0x71...f2a1', fid: 1, username: 'Vitalik', xp: 999999, pendingXp: 0, level: 99, tier: 'ELITE', reputation: 999, badges: ['God Tier'], followers: 1000000, winRate: 99.9, totalVolume: 10000000, pnlNet: 5000000, xpHistory: [] },
-  { address: '0x12...99ee', fid: 88, username: 'BaseAlpha', xp: 85000, pendingXp: 120, level: 45, tier: 'ELITE', reputation: 940, badges: ['Whale', 'Degen'], followers: 12400, winRate: 72.1, totalVolume: 2500000, pnlNet: 120000, xpHistory: [] },
-  { address: '0xabc...1234', fid: 420, username: 'DegenKing', xp: 52000, pendingXp: 50, level: 28, tier: 'GOLD', reputation: 880, badges: ['Risk Taker'], followers: 5200, winRate: 58.4, totalVolume: 800000, pnlNet: 45000, xpHistory: [] },
-  INITIAL_USER,
-  { address: '0xfee...4421', fid: 1024, username: 'NewDegen', xp: 8400, pendingXp: 200, level: 5, tier: 'BRONZE', reputation: 420, badges: ['Newbie'], followers: 12, winRate: 45.0, totalVolume: 1500, pnlNet: -200, xpHistory: [] },
-];
+// Placeholder for UI initialization, replaced by real data on load
+export const LEADERBOARD_PLACEHOLDERS: UserProfile[] = [];
 
-export const PORTFOLIO_HISTORY: PortfolioHistory[] = [
-  { timestamp: '08:00', value: 3800 },
-  { timestamp: '12:00', value: 4100 },
-  { timestamp: '16:00', value: 3950 },
-  { timestamp: '20:00', value: 4500 },
-  { timestamp: '00:00', value: 4200.50 },
+export const MOCK_LEADERBOARD: UserProfile[] = [
+  {
+    address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+    username: 'vitalik.eth',
+    xp: 154200,
+    pendingXp: 0,
+    level: 99,
+    tier: 'ELITE',
+    reputation: 999,
+    badges: ['OG', 'Verified'],
+    followers: 105000,
+    winRate: 85,
+    totalVolume: 5000000,
+    pnlNet: 250000,
+    xpHistory: []
+  },
+  {
+    address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+    username: 'jesse.base',
+    xp: 125000,
+    pendingXp: 0,
+    level: 85,
+    tier: 'ELITE',
+    reputation: 950,
+    badges: ['Builder', 'Based'],
+    followers: 55000,
+    winRate: 72,
+    totalVolume: 1200000,
+    pnlNet: 45000,
+    xpHistory: []
+  },
+  {
+    address: '0x532f27101965dd16442E59d40670FaF5eBB142E4',
+    username: 'based_pepe',
+    xp: 85000,
+    pendingXp: 1200,
+    level: 60,
+    tier: 'GOLD',
+    reputation: 800,
+    badges: ['Meme'],
+    followers: 25000,
+    winRate: 45,
+    totalVolume: 800000,
+    pnlNet: 12000,
+    xpHistory: []
+  },
+  {
+    address: '0x1f9090aaE28b8a3dCeaDf281B0F12828e676c326',
+    username: 'uniswap_pro',
+    xp: 42000,
+    pendingXp: 0,
+    level: 35,
+    tier: 'SILVER',
+    reputation: 600,
+    badges: ['DeFi'],
+    followers: 12000,
+    winRate: 60,
+    totalVolume: 2500000,
+    pnlNet: 8000,
+    xpHistory: []
+  },
+  {
+    address: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed',
+    username: 'degen_intern',
+    xp: 15000,
+    pendingXp: 500,
+    level: 15,
+    tier: 'BRONZE',
+    reputation: 420,
+    badges: [],
+    followers: 5000,
+    winRate: 35,
+    totalVolume: 50000,
+    pnlNet: -2500,
+    xpHistory: []
+  }
 ];

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MOCK_TOKENS } from '../constants';
+import { BASE_TOKENS } from '../constants';
 import { Token } from '../types';
 import { sdk } from "../farcasterSdk";
 
@@ -10,53 +10,29 @@ interface AlphaFeedProps {
   onInteraction: (action: string) => void;
 }
 
-const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [subscribed, setSubscribed] = useState<Record<string, boolean>>({});
-  const [loadingSub, setLoadingSub] = useState<string | null>(null);
+interface CreatorCardProps {
+    token: Token;
+    isActive: boolean;
+    isSubscribed: boolean;
+    isLoadingSub: boolean;
+    onOpenToken: (e: React.MouseEvent, address?: string) => void;
+    onOpenProfile: (e: React.MouseEvent, username: string) => void;
+    onSubscribe: (e: React.MouseEvent, symbol: string) => void;
+    onBuyAlpha: () => void;
+    onShare: () => void;
+}
 
-  const handleScroll = () => {
-    if (containerRef.current) {
-      const index = Math.round(containerRef.current.scrollTop / containerRef.current.clientHeight);
-      setActiveIndex(index);
-    }
-  };
-
-  const handleOpenToken = (e: React.MouseEvent, address?: string) => {
-    e.stopPropagation();
-    // Default to WETH address if mock token has none, for demo purposes
-    const target = address || '0x4200000000000000000000000000000000000006';
-    sdk.actions.openUrl(`https://basescan.org/token/${target}`);
-    onInteraction('OPEN_TOKEN_DETAILS');
-  };
-
-  const handleOpenProfile = (e: React.MouseEvent, username: string) => {
-    e.stopPropagation();
-    // Clean username and open Warpcast profile
-    const handle = username.replace('@', '');
-    sdk.actions.openUrl(`https://warpcast.com/${handle}`);
-  };
-
-  const handleSubscribe = async (e: React.MouseEvent, symbol: string) => {
-    e.stopPropagation();
-    if (subscribed[symbol] || loadingSub) return;
-    
-    setLoadingSub(symbol);
-    try {
-        const result = await sdk.actions.addMiniApp();
-        if (result.added) {
-            setSubscribed(prev => ({...prev, [symbol]: true}));
-            onInteraction('ENABLE_NOTIFICATIONS');
-        }
-    } catch (err) {
-        console.error("Failed to subscribe", err);
-    } finally {
-        setLoadingSub(null);
-    }
-  };
-
-  const CreatorCard = ({ token, isActive }: { token: Token, isActive: boolean }) => (
+const CreatorCard: React.FC<CreatorCardProps> = ({ 
+    token, 
+    isActive, 
+    isSubscribed, 
+    isLoadingSub, 
+    onOpenToken, 
+    onOpenProfile, 
+    onSubscribe, 
+    onBuyAlpha, 
+    onShare 
+}) => (
     <div className="h-full w-full snap-center relative flex flex-col justify-between overflow-hidden bg-slate-950 flex-shrink-0">
        {/* Immersive Background */}
        <div className="absolute inset-0 z-0">
@@ -70,7 +46,7 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
        <div className="relative z-10 p-6 flex justify-between items-start pt-8">
           <div 
             className="flex items-center gap-3 cursor-pointer group"
-            onClick={(e) => handleOpenToken(e, token.address)}
+            onClick={(e) => onOpenToken(e, token.address)}
           >
              <div className="w-10 h-10 rounded-full border-2 border-white/20 overflow-hidden bg-black shadow-lg group-hover:scale-105 transition-transform group-hover:border-blue-400">
                 <img src={token.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${token.symbol}`} className="w-full h-full object-cover" alt={token.name} />
@@ -81,7 +57,7 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
                     <svg className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </h3>
                 <span 
-                    onClick={(e) => handleOpenProfile(e, token.creator)}
+                    onClick={(e) => onOpenProfile(e, token.creator)}
                     className="text-blue-400 font-mono text-xs font-bold bg-blue-500/10 px-2 py-0.5 rounded-full backdrop-blur-md hover:bg-blue-500/20 transition-colors"
                 >
                     @{token.creator}
@@ -95,13 +71,13 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
              
              {/* Bell / Subscribe Button */}
              <button 
-                onClick={(e) => handleSubscribe(e, token.symbol)}
-                className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${subscribed[token.symbol] ? 'bg-yellow-500 border-yellow-400 text-slate-950' : 'bg-slate-900/50 border-white/20 text-white hover:bg-white/20'}`}
+                onClick={(e) => onSubscribe(e, token.symbol)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${isSubscribed ? 'bg-yellow-500 border-yellow-400 text-slate-950' : 'bg-slate-900/50 border-white/20 text-white hover:bg-white/20'}`}
              >
-                {loadingSub === token.symbol ? (
+                {isLoadingSub ? (
                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                   <svg className="w-4 h-4" fill={subscribed[token.symbol] ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-4 h-4" fill={isSubscribed ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                    </svg>
                 )}
@@ -130,14 +106,13 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
           <div className="space-y-3">
              <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">AI Alpha Signal</span>
+                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Base Verified</span>
              </div>
              <p className="text-sm font-medium text-slate-100 leading-relaxed drop-shadow-sm max-w-[90%]">
-               {token.description || "Awaiting signal analysis..."}
+               {token.description}
              </p>
              <div className="flex gap-4 text-[10px] font-mono text-slate-400">
-                <span>Mkt Cap: <span className="text-white">${(token.marketCap / 1000000).toFixed(1)}M</span></span>
-                <span>Vol: <span className="text-white">${(token.volume24h / 1000).toFixed(1)}K</span></span>
+                <span>Network: <span className="text-white">Base Mainnet</span></span>
              </div>
           </div>
 
@@ -146,7 +121,7 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
                 onClick={onBuyAlpha}
                 className="py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"
              >
-                <span>Ape In</span>
+                <span>Swap Now</span>
                 <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
              </button>
              <button 
@@ -158,7 +133,51 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
           </div>
        </div>
     </div>
-  );
+);
+
+const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [subscribed, setSubscribed] = useState<Record<string, boolean>>({});
+  const [loadingSub, setLoadingSub] = useState<string | null>(null);
+
+  const handleScroll = () => {
+    if (containerRef.current) {
+      const index = Math.round(containerRef.current.scrollTop / containerRef.current.clientHeight);
+      setActiveIndex(index);
+    }
+  };
+
+  const handleOpenToken = (e: React.MouseEvent, address?: string) => {
+    e.stopPropagation();
+    if (!address) return;
+    sdk.actions.openUrl(`https://basescan.org/token/${address}`);
+    onInteraction('OPEN_TOKEN_DETAILS');
+  };
+
+  const handleOpenProfile = (e: React.MouseEvent, username: string) => {
+    e.stopPropagation();
+    const handle = username.replace('@', '');
+    sdk.actions.openUrl(`https://warpcast.com/${handle}`);
+  };
+
+  const handleSubscribe = async (e: React.MouseEvent, symbol: string) => {
+    e.stopPropagation();
+    if (subscribed[symbol] || loadingSub) return;
+    
+    setLoadingSub(symbol);
+    try {
+        const result = await sdk.actions.addMiniApp();
+        if (result.added) {
+            setSubscribed(prev => ({...prev, [symbol]: true}));
+            onInteraction('ENABLE_NOTIFICATIONS');
+        }
+    } catch (err) {
+        console.error("Failed to subscribe", err);
+    } finally {
+        setLoadingSub(null);
+    }
+  };
 
   return (
     <div 
@@ -167,8 +186,19 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
       className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar bg-black"
       style={{ height: 'calc(100vh - 140px)' }} // Adjust for Layout header/footer
     >
-       {MOCK_TOKENS.map((token, index) => (
-          <CreatorCard key={token.symbol} token={token} isActive={index === activeIndex} />
+       {BASE_TOKENS.map((token, index) => (
+          <CreatorCard 
+            key={token.symbol} 
+            token={token} 
+            isActive={index === activeIndex} 
+            isSubscribed={!!subscribed[token.symbol]}
+            isLoadingSub={loadingSub === token.symbol}
+            onOpenToken={handleOpenToken}
+            onOpenProfile={handleOpenProfile}
+            onSubscribe={handleSubscribe}
+            onBuyAlpha={onBuyAlpha}
+            onShare={onShare}
+          />
        ))}
        <div className="h-24 w-full snap-center flex items-center justify-center text-slate-600 font-mono text-xs">
           End of Feed

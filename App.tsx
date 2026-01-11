@@ -15,11 +15,11 @@ import CreatorLauncher from './components/CreatorLauncher';
 import Quests from './components/Quests';
 import Onboarding from './components/Onboarding';
 import { ViewState, UserProfile } from './types';
-import { INITIAL_USER, XP_REWARDS } from './constants';
+import { EMPTY_USER, XP_REWARDS } from './constants';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('feed');
-  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
+  const [user, setUser] = useState<UserProfile>(EMPTY_USER);
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -28,6 +28,8 @@ const App: React.FC = () => {
   const [xpNotification, setXpNotification] = useState<{amount: number, label: string} | null>(null);
 
   const queryClient = useMemo(() => new QueryClient(), []);
+  
+  // Production Config for Base Mainnet
   const wagmiConfig = useMemo(() => createConfig({
     chains: [base],
     transports: {
@@ -43,22 +45,22 @@ const App: React.FC = () => {
         setShowOnboarding(true);
       }
 
-      // 1. Load Farcaster Context for Optimistic UI
+      // Load Farcaster Context
       try {
         const context = await sdk.context; 
         if (context && context.user) {
+          setIsAuthenticated(true);
           setUser(prev => ({
             ...prev,
             fid: context.user.fid,
             username: context.user.username || prev.username,
-            tier: prev.tier
           }));
         }
       } catch (e) {
-        console.warn("Could not load Farcaster context:", e);
+        console.warn("Farcaster context unavailable");
       }
       
-      setTimeout(() => setIsReady(true), 1500);
+      setIsReady(true);
     };
     init();
   }, []);
@@ -81,14 +83,13 @@ const App: React.FC = () => {
           xpHistory: [...prev.xpHistory, { id: Math.random().toString(), action, amount, timestamp: Date.now() }]
       }));
 
-      // Trigger notification
       setXpNotification({ amount, label: action.replace(/_/g, ' ') });
       setTimeout(() => setXpNotification(null), 3000);
   }, []);
 
   const handleShare = useCallback((type: string, data?: any) => {
     const text = type === 'pnl' 
-      ? `BASELINES Trade OS: Just locked in $${data?.pnl || '4,200'} profit on Base! 🚀`
+      ? `BASELINES Trade OS: Just locked in profit on Base! 🚀`
       : `Found Alpha on BASELINES. Don't fade the social signals. 🔥`;
     
     try {
@@ -165,7 +166,7 @@ const App: React.FC = () => {
     return (
       <div className="flex flex-col h-screen bg-slate-950 items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">BASELINES Loading...</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 animate-pulse">Initializing BASELINES...</p>
       </div>
     );
   }

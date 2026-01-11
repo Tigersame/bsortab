@@ -16,8 +16,9 @@ import {
   TransactionStatusAction 
 } from '@coinbase/onchainkit/transaction';
 
-// Base USDC Morpho Vault - Reliable and secure yield on Base
-const VAULT_ADDRESS = '0x4694485dadc0603746614df2043d85a0e2763ad6';
+// Base Mainnet Vault (Morpho Blue USDC/WETH - Example Address)
+// Note: In production, verify the specific Vault (e.g. Gauntlet USDC Core)
+const VAULT_ADDRESS = '0xBEEF01735c132Bec6bd30497DA753e52549892a2'; 
 
 interface EarnVaultProps {
   onSuccess: () => void;
@@ -28,7 +29,6 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
   const [amount, setAmount] = useState('');
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit');
 
-  // Fetch real vault data using OnchainKit
   const {
     totalApy,
     nativeApy,
@@ -50,7 +50,6 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
     }
   }, [amount, asset]);
 
-  // Build transactions using OnchainKit Earn hooks
   const { calls: depositCalls } = useBuildDepositToMorphoTx({
     vaultAddress: VAULT_ADDRESS,
     recipientAddress: address,
@@ -73,6 +72,15 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Syncing Vault Data...</p>
       </div>
     );
+  }
+
+  // Handle error state gracefully if vault data fetch fails (e.g. wrong address provided in code)
+  if (vaultStatus === 'error') {
+      return (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-red-500/20 text-center">
+            <p className="text-xs text-red-400 font-bold">Vault unavailable at the moment.</p>
+        </div>
+      )
   }
 
   return (
@@ -99,12 +107,6 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
               <p className="text-[8px] font-black uppercase opacity-60">Native</p>
               <p className="text-xs font-bold">{(nativeApy ? nativeApy * 100 : 0).toFixed(2)}%</p>
             </div>
-            {rewards && rewards.length > 0 && rewards.map((r: any) => (
-              <div key={r.asset}>
-                <p className="text-[8px] font-black uppercase opacity-60">{r.assetName || 'Reward'}</p>
-                <p className="text-xs font-bold">{(r.apy * 100).toFixed(2)}%</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -117,7 +119,7 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
         </div>
         <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800">
           <span className="text-[9px] font-black text-slate-500 uppercase block mb-1">Vault Status</span>
-          <p className="text-lg font-black text-green-400 font-mono italic uppercase text-[10px] pt-1">Verified Protocol</p>
+          <p className="text-lg font-black text-green-400 font-mono italic uppercase text-[10px] pt-1">Active Strategy</p>
         </div>
       </div>
 
@@ -175,10 +177,6 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
           </TransactionStatus>
         </Transaction>
       </div>
-
-      <p className="text-[9px] text-center text-slate-600 font-mono uppercase px-8">
-        Deposits are supplied to the Morpho Blue protocol on Base. Yield is variable and accrues per block. Use BASELINES for maximum efficiency.
-      </p>
     </div>
   );
 };

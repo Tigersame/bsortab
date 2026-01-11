@@ -18,7 +18,7 @@ export async function analyzeAlphaFeed(trades: string): Promise<string> {
     
     return response.text || "Scanning for new signals...";
   } catch (error) {
-    console.error("AI Analysis Error:", error);
+    // Suppress console spam for expected environment issues
     return "Market analysis engine syncing. Watch the feed.";
   }
 }
@@ -39,7 +39,6 @@ export async function checkTokenSafety(tokenName: string, creator: string): Prom
     
     return response.text || "Vibe: Neutral.";
   } catch (error) {
-    console.error("Vibe Check Error:", error);
     return "Vibe: Uncertain.";
   }
 }
@@ -99,8 +98,7 @@ export async function generateTokenMetadata(prompt: string): Promise<{ name: str
     if (!text) return fallback;
     return JSON.parse(text);
   } catch (error) {
-    console.error("Metadata Gen Error:", error);
-    // Return fallback silently if fetch fails (e.g. COOP error)
+    // Silent fail to fallback
     return fallback;
   }
 }
