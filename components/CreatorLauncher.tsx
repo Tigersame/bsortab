@@ -1,345 +1,579 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 import { generateTokenMetadata } from '../geminiService';
-import { sdk } from "@farcaster/miniapp-sdk";
+import { sdk } from "../farcasterSdk";
 
 interface CreatorLauncherProps {
   onLaunch: () => void;
+  onInteraction: (action: string) => void;
+  isAuthenticated: boolean;
 }
 
-const CreatorLauncher: React.FC<CreatorLauncherProps> = ({ onLaunch }) => {
-  const [prompt, setPrompt] = useState('');
-  const [viewState, setViewState] = useState<'input' | 'thinking' | 'review' | 'deploying' | 'success'>('input');
-  
-  const [tokenData, setTokenData] = useState<{name: string, symbol: string, description: string}>({
-    name: '', symbol: '', description: ''
-  });
-  
-  const [logs, setLogs] = useState<string[]>([]);
-  const logsEndRef = useRef<HTMLDivElement>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+type RewardType = 'paired' | 'clanker' | 'both';
 
-  const DEFAULT_SUPPLY = "1,000,000,000";
+interface Recipient {
+  id: string;
+  address: string;
+  admin: string;
+  percentage: number;
+  type: RewardType;
+}
 
+const CreatorLauncher: React.FC<CreatorLauncherProps> = ({ onLaunch, onInteraction, isAuthenticated }) => {
+  const { address } = useAccount();
+  const [idea, setIdea] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [tokenData, setTokenData] = useState<{name: string, symbol: string, description: string, image: string} | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
+  
+  // Extensions
+  const [creatorBuyAmount, setCreatorBuyAmount] = useState('');
+  const [enableCreatorBuy, setEnableCreatorBuy] = useState(false);
+  const [enableVault, setEnableVault] = useState(true);
+  const [vaultDuration, setVaultDuration] = useState(31);
+  const [vaultPercentage, setVaultPercentage] = useState(30);
+  
+  // Metadata & Config
+  const [updatableMetadata, setUpdatableMetadata] = useState(true);
+  const [socials, setSocials] = useState({ website: '', telegram: '', twitter: '', farcaster: '' });
+  const [feeConfig, setFeeConfig] = useState<'recommended' | 'legacy'>('recommended');
+  
+  // Rewards
+  const [recipients, setRecipients] = useState<Recipient[]>([
+    { id: '1', address: '', admin: '', percentage: 100, type: 'paired' }
+  ]);
+
+  // Preclank
+  const [isPreclankMode, setIsPreclankMode] = useState(false);
+  const [triggerPhrase, setTriggerPhrase] = useState('');
+  const [showManagePreclanks, setShowManagePreclanks] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'launch' | 'settings'>('launch');
+  const [settingsSection, setSettingsSection] = useState<'meta' | 'rewards'>('meta');
+
+  // Auto-fill connected wallet as default recipient
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (address && recipients.length === 1 && recipients[0].address === '') {
+      setRecipients([{ ...recipients[0], address: address }]);
     }
-  }, [logs]);
+  }, [address]);
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    if (!idea.trim()) return;
     
-    setViewState('thinking');
-    setLogs([]);
-    
-    const thoughts = [
-      "Connecting to neural lattice...",
-      `Analyzing intent: "${prompt.substring(0, 15)}..."`,
-      "Synthesizing meme vectors...",
-      "Querying Base chain sentiment...",
-      "Optimizing ticker symbol...",
-      "Generating asset metadata..."
-    ];
-    
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < thoughts.length) {
-        setLogs(prev => [...prev, thoughts[i]]);
-        i++;
-      }
-    }, 800);
-
+    setIsGenerating(true);
     try {
-      // Parallel execution: Wait for AI + minimum time for effect
-      const [data] = await Promise.all([
-        generateTokenMetadata(prompt),
-        new Promise(resolve => setTimeout(resolve, 3500))
-      ]);
-      
-      clearInterval(interval);
-      setTokenData(data);
-      setViewState('review');
-    } catch (e) {
-      clearInterval(interval);
-      setLogs(prev => [...prev, "Error: Neural link failed. Retrying..."]);
-      setTimeout(() => setViewState('input'), 2000);
+      const data = await generateTokenMetadata(idea);
+      setTokenData({
+        ...data,
+        image: `https://api.dicebear.com/7.x/identicon/svg?seed=${data.symbol}&backgroundColor=0f172a`
+      });
+      onInteraction('GENERATE_METADATA');
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
   const handleDeploy = () => {
-    setViewState('deploying');
-    setLogs([]);
-    
-    const deploySteps = [
-      `Compiling ${tokenData.symbol} contract...`,
-      "Verifying source code on Etherscan...",
-      "Initializing Uniswap V3 Pool...",
-      "Seeding initial liquidity (Clanker Lock)...",
-      "Renouncing ownership...",
-      "Token deployed successfully."
-    ];
-    
-    let step = 0;
-    const interval = setInterval(() => {
-      if (step < deploySteps.length) {
-        setLogs(prev => [...prev, deploySteps[step]]);
-        step++;
-      } else {
-        clearInterval(interval);
-        setTimeout(() => setViewState('success'), 800);
-      }
-    }, 1000);
+    setIsDeploying(true);
+    // Simulate deployment delay
+    setTimeout(() => {
+        setIsDeploying(false);
+        onLaunch();
+    }, 2500);
   };
 
-  const handleCopy = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+  const handleSavePreclank = () => {
+    if (!isAuthenticated) {
+        alert("You must sign in with Farcaster to save a Preclank.");
+        return;
+    }
+    if (!triggerPhrase) {
+        alert("Please enter a unique trigger phrase for your Preclank.");
+        return;
+    }
+    // Simulate saving
+    onInteraction('SAVE_PRECLANK');
+    alert(`Preclank Saved!\n\nTo deploy, cast on Farcaster:\n"${triggerPhrase} @clanker"`);
+    onLaunch(); 
   };
 
-  const renderInput = () => (
-    <div className="flex flex-col h-full animate-in fade-in duration-500 max-w-sm mx-auto w-full">
-      <div className="flex-1 flex flex-col justify-center space-y-8">
-        <div className="space-y-2 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
-             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-             <span className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-widest">AI Agent Online</span>
-          </div>
-          <h1 className="text-4xl font-black text-white font-mono tracking-tighter">
-            CLANKER<span className="text-blue-500">.AI</span>
-          </h1>
-          <p className="text-slate-400 text-xs font-mono">
-            Describe your token. I will handle the rest.
-          </p>
-        </div>
+  const addRecipient = () => {
+    const remaining = Math.max(0, 100 - recipients.reduce((acc, r) => acc + r.percentage, 0));
+    setRecipients([...recipients, { 
+      id: Math.random().toString(), 
+      address: '', 
+      admin: '', 
+      percentage: remaining, 
+      type: 'paired' 
+    }]);
+  };
 
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. A coin for people who love retro gaming and pizza..."
-              className="w-full h-32 bg-transparent text-lg font-medium text-white placeholder:text-slate-700 outline-none resize-none font-sans"
-              autoFocus
-            />
-            <div className="flex justify-between items-center mt-4 border-t border-slate-800 pt-4">
-               <span className="text-[10px] text-slate-600 font-mono uppercase">{prompt.length}/280 CHARS</span>
-               <button 
-                onClick={handleGenerate}
-                disabled={!prompt.trim()}
-                className="px-6 py-2 bg-white text-black hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-xs font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
-              >
-                Launch
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-              </button>
-            </div>
-          </div>
-        </div>
+  const updateRecipient = (id: string, field: keyof Recipient, value: any) => {
+    setRecipients(recipients.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
 
-        <div className="flex flex-wrap gap-2 justify-center">
-          {['Meme', 'Utility', 'DAO', 'Cat', 'Dog', 'AI'].map(tag => (
-            <button 
-              key={tag} 
-              onClick={() => setPrompt(prev => prev + (prev ? ' ' : '') + tag)}
-              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-500 hover:text-white hover:border-blue-500/50 transition-all"
-            >
-              #{tag}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  const removeRecipient = (id: string) => {
+    if (recipients.length > 1) {
+       setRecipients(recipients.filter(r => r.id !== id));
+    }
+  };
 
-  const renderThinking = () => (
-    <div className="flex flex-col h-full justify-center items-center space-y-8 animate-in fade-in duration-500 max-w-sm mx-auto w-full">
-      <div className="relative w-32 h-32 flex items-center justify-center">
-        <div className="absolute inset-0 border-4 border-slate-800/50 rounded-full"></div>
-        <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <div className="absolute inset-0 border-4 border-indigo-500 border-b-transparent rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-        <div className="text-4xl animate-pulse">🧠</div>
-      </div>
-      
-      <div className="w-full bg-slate-950 rounded-xl border border-slate-800 p-4 font-mono text-xs h-48 overflow-hidden relative shadow-inner">
-         <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-slate-950 to-transparent pointer-events-none"></div>
-         <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none"></div>
-         <div className="space-y-2">
-           {logs.map((log, i) => (
-             <p key={i} className="text-blue-400/80 animate-in slide-in-from-left-2 fade-in">
-               <span className="text-slate-600 mr-2">{'>'}</span>{log}
-             </p>
-           ))}
-           <div ref={logsEndRef} />
-         </div>
-      </div>
-    </div>
-  );
-
-  const renderReview = () => (
-    <div className="flex flex-col h-full justify-center space-y-6 animate-in slide-in-from-bottom-4 duration-500 max-w-sm mx-auto w-full">
-      <div className="text-center space-y-1">
-        <h2 className="text-xl font-black text-white font-mono uppercase tracking-tight">Ready to Deploy</h2>
-        <p className="text-slate-500 text-[10px] uppercase tracking-widest">Base Chain • Gasless</p>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl relative group">
-        <div className="h-32 bg-gradient-to-br from-blue-600 to-indigo-800 relative">
-           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-        </div>
-        <div className="px-6 pb-6 relative">
-           <div className="w-24 h-24 -mt-12 mx-auto bg-slate-950 rounded-2xl border-4 border-slate-900 shadow-xl flex items-center justify-center overflow-hidden mb-4">
-              <img 
-                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${tokenData.symbol}`} 
-                alt="Token" 
-                className="w-full h-full object-cover"
-              />
-           </div>
-           
-           <div className="text-center space-y-1 mb-6">
-              <h3 
-                onClick={() => handleCopy(tokenData.name, 'name')}
-                className="text-2xl font-black text-white tracking-tight cursor-pointer hover:text-blue-400 transition-colors"
-              >
-                {tokenData.name}
-              </h3>
-              <p 
-                onClick={() => handleCopy(tokenData.symbol, 'symbol')}
-                className="text-sm font-mono font-bold text-blue-500 cursor-pointer hover:text-blue-400 transition-colors"
-              >
-                ${tokenData.symbol}
-              </p>
-           </div>
-
-           <div className="space-y-4">
-              <div 
-                 onClick={() => handleCopy(tokenData.description, 'description')}
-                 className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 text-xs text-slate-400 leading-relaxed text-center italic hover:bg-slate-950 transition-colors cursor-pointer relative"
-              >
-                 "{tokenData.description}"
-                 {copiedField === 'description' && (
-                   <div className="absolute inset-0 flex items-center justify-center bg-slate-900/90 rounded-xl text-green-400 font-bold text-[10px] uppercase tracking-widest">
-                     Copied
-                   </div>
-                 )}
+  if (showManagePreclanks) {
+      return (
+          <div className="p-4 space-y-6 h-full overflow-y-auto no-scrollbar pb-24 animate-in slide-in-from-right-2">
+              <div className="flex items-center justify-between pt-4">
+                  <button onClick={() => setShowManagePreclanks(false)} className="text-slate-400 hover:text-white flex items-center gap-1 text-[10px] font-black uppercase tracking-widest">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+                      Back
+                  </button>
+                  <h2 className="text-xl font-black text-white">Your Preclanks</h2>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                    <span className="text-[9px] text-slate-500 uppercase block mb-1">Total Supply</span>
-                    <span className="text-xs font-mono font-bold text-white">{DEFAULT_SUPPLY}</span>
-                 </div>
-                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-center">
-                    <span className="text-[9px] text-slate-500 uppercase block mb-1">Liquidity</span>
-                    <span className="text-xs font-mono font-bold text-green-400">Locked 🔒</span>
-                 </div>
+              
+              <div className="space-y-4">
+                  {/* Mock Preclank Item */}
+                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 opacity-75">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-lg">😼</div>
+                          <div>
+                              <h3 className="text-white font-bold text-sm">Based Cat</h3>
+                              <p className="text-[9px] text-slate-500 font-mono">Trigger: "Launch Based Cat @clanker"</p>
+                          </div>
+                      </div>
+                      <div className="flex gap-2">
+                          <button className="flex-1 py-2 bg-slate-800 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400">Edit</button>
+                          <button className="flex-1 py-2 bg-red-900/20 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/20">Delete</button>
+                      </div>
+                  </div>
+                  
+                  <div className="p-8 text-center text-slate-600 text-[10px] font-mono border-2 border-dashed border-slate-800 rounded-2xl">
+                      No other active Preclanks found.
+                  </div>
               </div>
-           </div>
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button 
-          onClick={() => setViewState('input')}
-          className="flex-1 py-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          Edit
-        </button>
-        <button 
-          onClick={handleDeploy}
-          className="flex-[2] py-4 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg shadow-white/10 flex justify-center items-center gap-2 active:scale-95"
-        >
-          Deploy Contract
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderDeploying = () => (
-    <div className="flex flex-col h-full justify-center space-y-6 animate-in fade-in duration-500 max-w-sm mx-auto w-full">
-      <div className="text-center space-y-2">
-         <div className="w-16 h-16 mx-auto bg-slate-900 rounded-full border-2 border-slate-800 flex items-center justify-center relative">
-            <div className="absolute inset-0 rounded-full border-2 border-green-500 border-r-transparent animate-spin"></div>
-            <span className="text-xl">⚙️</span>
-         </div>
-         <h2 className="text-lg font-black text-white font-mono uppercase tracking-tight">Deploying to Base</h2>
-         <p className="text-[10px] text-slate-500 font-mono">Confirming transaction...</p>
-      </div>
-
-      <div className="bg-slate-950 rounded-xl border border-slate-800 p-6 font-mono text-[10px] shadow-2xl">
-        <div className="space-y-3">
-          {logs.map((log, i) => (
-            <div key={i} className="flex items-center gap-3 animate-in slide-in-from-left-4 fade-in">
-               <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-               <span className="text-slate-300">{log}</span>
-            </div>
-          ))}
-          <div ref={logsEndRef} />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSuccess = () => (
-    <div className="flex flex-col h-full justify-center items-center space-y-8 animate-in zoom-in-95 duration-700 max-w-sm mx-auto w-full">
-       <div className="relative">
-          <div className="absolute inset-0 bg-green-500 blur-[80px] opacity-20"></div>
-          <div className="w-40 h-40 bg-slate-900 rounded-[2.5rem] border-2 border-green-500/50 flex flex-col items-center justify-center shadow-2xl relative z-10 overflow-hidden group">
-             <img 
-                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${tokenData.symbol}`} 
-                alt="Token" 
-                className="w-24 h-24 rounded-2xl shadow-lg mb-2 group-hover:scale-110 transition-transform duration-500"
-              />
           </div>
-          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-black text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest border-2 border-slate-900 shadow-lg whitespace-nowrap">
-            Deployed on Base
-          </div>
-       </div>
-
-       <div className="text-center space-y-2">
-          <h1 className="text-3xl font-black text-white tracking-tighter">{tokenData.name}</h1>
-          <p className="text-slate-400 text-sm font-mono">${tokenData.symbol} is live.</p>
-       </div>
-
-       <div className="w-full space-y-3 pt-4">
-          <button 
-            onClick={() => {
-                onLaunch(); 
-                sdk.actions.openUrl(`https://basescan.org/token/${tokenData.symbol}`);
-            }}
-            className="w-full py-4 bg-white text-black rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all shadow-lg shadow-white/10"
-          >
-            View Contract
-          </button>
-          <button 
-            onClick={() => sdk.actions.composeCast({
-              text: `I just launched $${tokenData.symbol} on Base using BSORTAB! @clanker`,
-              embeds: ['https://bsortab.app'] 
-            })}
-            className="w-full py-4 bg-[#4C2A9E] text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#5D34C2] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#4C2A9E]/30"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
-            Cast Launch
-          </button>
-          <button 
-             onClick={() => { onLaunch(); setViewState('input'); setPrompt(''); }}
-             className="w-full py-3 text-slate-500 hover:text-white text-[10px] font-bold uppercase tracking-widest transition-colors"
-          >
-             Launch Another
-          </button>
-       </div>
-    </div>
-  );
+      )
+  }
 
   return (
-    <div className="p-6 h-full min-h-[600px] flex flex-col">
-      {viewState === 'input' && renderInput()}
-      {viewState === 'thinking' && renderThinking()}
-      {viewState === 'review' && renderReview()}
-      {viewState === 'deploying' && renderDeploying()}
-      {viewState === 'success' && renderSuccess()}
+    <div className="p-4 space-y-6 h-full overflow-y-auto no-scrollbar pb-24">
+      <div className="pt-4 flex items-center justify-between">
+         <div className="flex items-center gap-2">
+             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+             </div>
+             <div>
+                 <h2 className="text-xl font-black tracking-tighter text-white leading-none">Clanker</h2>
+                 <p className="text-[9px] text-slate-500 font-black tracking-widest uppercase">Token Launcher</p>
+             </div>
+         </div>
+         <button 
+            onClick={() => setShowManagePreclanks(true)}
+            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors"
+         >
+            Manage Preclanks
+         </button>
+      </div>
+
+      {!tokenData ? (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4">
+           {/* Idea Input */}
+           <div className="p-6 rounded-[2rem] bg-slate-900 border border-slate-800 space-y-4 shadow-xl relative overflow-hidden">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Token Concept / Prompt</label>
+              <textarea 
+                value={idea}
+                onChange={(e) => setIdea(e.target.value)}
+                placeholder="e.g. @clanker launch a token for builder energy on base"
+                className="w-full h-24 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:border-blue-500 outline-none resize-none transition-colors relative z-10 font-mono"
+              />
+              <button 
+                onClick={handleGenerate}
+                disabled={isGenerating || !idea}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 relative z-10"
+              >
+                {isGenerating ? (
+                    <>
+                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                       <span>Dreaming...</span>
+                    </>
+                ) : (
+                    <span>Generate Metadata</span>
+                )}
+              </button>
+           </div>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in zoom-in-95 duration-500">
+           {/* Preview Card */}
+           <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 border border-slate-800 shadow-2xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10"></div>
+              <div className="relative z-10 p-8 flex flex-col items-center text-center space-y-4">
+                 <div className="w-24 h-24 rounded-full border-4 border-slate-950 shadow-2xl overflow-hidden bg-slate-950">
+                    <img src={tokenData.image} alt={tokenData.name} className="w-full h-full object-cover" />
+                 </div>
+                 <div>
+                    <h3 className="text-3xl font-black text-white tracking-tight">{tokenData.name}</h3>
+                    <div className="flex justify-center gap-2">
+                        <span className="text-sm font-mono font-bold text-blue-400 bg-blue-900/20 px-3 py-1 rounded-full border border-blue-500/20">${tokenData.symbol}</span>
+                        <span className="text-[10px] font-black text-slate-500 bg-slate-900 px-2 py-1.5 rounded-full border border-slate-800">100B Supply</span>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           {/* Main Navigation Tabs */}
+           <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800">
+             <button onClick={() => setActiveTab('launch')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'launch' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Launch Config</button>
+             <button onClick={() => setActiveTab('settings')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Token Settings</button>
+           </div>
+
+           {activeTab === 'launch' ? (
+             <div className="space-y-4 animate-in fade-in slide-in-from-left-2">
+               {/* Basic Info (Network) */}
+               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network (Chain)</label>
+                  <div className="flex items-center gap-2 p-3 bg-slate-950 rounded-xl border border-slate-800">
+                     <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-[10px] font-bold text-white">B</div>
+                     <span className="text-xs font-bold text-white">Base</span>
+                     <span className="ml-auto text-[9px] text-green-500 font-bold bg-green-500/10 px-2 py-0.5 rounded-full">Active</span>
+                  </div>
+               </div>
+
+               {/* Creator Buy Option - Hidden if Preclank is enabled */}
+               <div className={`p-4 rounded-2xl border transition-all ${isPreclankMode ? 'bg-slate-900/50 border-slate-800/50 opacity-50' : 'bg-slate-900 border-slate-800'}`}>
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-lg">🛒</div>
+                        <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Creator Buy</h4>
+                            <p className="text-[9px] text-slate-500">{isPreclankMode ? 'Not supported in Preclank' : 'Snipe first block'}</p>
+                        </div>
+                     </div>
+                     <button 
+                        onClick={() => !isPreclankMode && setEnableCreatorBuy(!enableCreatorBuy)}
+                        disabled={isPreclankMode}
+                        className={`w-10 h-6 rounded-full p-1 transition-colors ${enableCreatorBuy && !isPreclankMode ? 'bg-blue-600' : 'bg-slate-700 cursor-not-allowed'}`}
+                     >
+                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${enableCreatorBuy && !isPreclankMode ? 'translate-x-4' : ''}`}></div>
+                     </button>
+                  </div>
+                  
+                  {enableCreatorBuy && !isPreclankMode && (
+                      <div className="animate-in slide-in-from-top-2 pt-4">
+                          <input 
+                            type="number"
+                            value={creatorBuyAmount}
+                            onChange={(e) => setCreatorBuyAmount(e.target.value)}
+                            placeholder="Amount in ETH (e.g. 0.05)"
+                            className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-blue-500 font-mono"
+                          />
+                      </div>
+                  )}
+               </div>
+
+               {/* Vault Option */}
+               <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-lg">🔒</div>
+                        <div>
+                            <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Creator Vault</h4>
+                            <p className="text-[9px] text-slate-500">Reserve & Lock Supply</p>
+                        </div>
+                     </div>
+                     <button 
+                        onClick={() => setEnableVault(!enableVault)}
+                        className={`w-10 h-6 rounded-full p-1 transition-colors ${enableVault ? 'bg-purple-600' : 'bg-slate-700'}`}
+                     >
+                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${enableVault ? 'translate-x-4' : ''}`}></div>
+                     </button>
+                  </div>
+
+                  {enableVault && (
+                     <div className="animate-in slide-in-from-top-2 pt-2 space-y-4">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                               <span>Allocation</span>
+                               <span className="text-white">{vaultPercentage}% (Max 30%)</span>
+                            </div>
+                            <input 
+                               type="range" 
+                               min="1" 
+                               max="30" 
+                               value={vaultPercentage} 
+                               onChange={(e) => setVaultPercentage(Number(e.target.value))}
+                               className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-600"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                               <span>Lock Duration</span>
+                               <span className="text-white">{vaultDuration} Days</span>
+                            </div>
+                            <input 
+                               type="range" 
+                               min="31" 
+                               max="365" 
+                               value={vaultDuration} 
+                               onChange={(e) => setVaultDuration(Number(e.target.value))}
+                               className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-purple-600"
+                            />
+                        </div>
+                     </div>
+                  )}
+               </div>
+             </div>
+           ) : (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-2">
+                 {/* Settings Sub-Tabs */}
+                 <div className="flex gap-2 mb-2">
+                    <button 
+                        onClick={() => setSettingsSection('meta')}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${settingsSection === 'meta' ? 'bg-slate-800 border-blue-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Metadata
+                    </button>
+                    <button 
+                        onClick={() => setSettingsSection('rewards')}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${settingsSection === 'rewards' ? 'bg-slate-800 border-blue-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                    >
+                        Rewards & Fees
+                    </button>
+                 </div>
+
+                 {settingsSection === 'meta' && (
+                     <div className="space-y-4 animate-in fade-in">
+                         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+                             <div className="space-y-2">
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Description</label>
+                                <textarea 
+                                    value={tokenData.description}
+                                    onChange={(e) => setTokenData({...tokenData, description: e.target.value})}
+                                    className="w-full h-20 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:border-blue-500 outline-none resize-none"
+                                />
+                             </div>
+                             
+                             <div className="grid grid-cols-2 gap-3">
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Website</label>
+                                    <input 
+                                        type="text" 
+                                        value={socials.website} 
+                                        onChange={e => setSocials({...socials, website: e.target.value})}
+                                        className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white outline-none focus:border-blue-500" 
+                                        placeholder="https://"
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Telegram</label>
+                                    <input 
+                                        type="text" 
+                                        value={socials.telegram} 
+                                        onChange={e => setSocials({...socials, telegram: e.target.value})}
+                                        className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white outline-none focus:border-blue-500" 
+                                        placeholder="t.me/"
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">X (Twitter)</label>
+                                    <input 
+                                        type="text" 
+                                        value={socials.twitter} 
+                                        onChange={e => setSocials({...socials, twitter: e.target.value})}
+                                        className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white outline-none focus:border-blue-500" 
+                                        placeholder="@handle"
+                                    />
+                                 </div>
+                                 <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Farcaster</label>
+                                    <input 
+                                        type="text" 
+                                        value={socials.farcaster} 
+                                        onChange={e => setSocials({...socials, farcaster: e.target.value})}
+                                        className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white outline-none focus:border-blue-500" 
+                                        placeholder="@handle"
+                                    />
+                                 </div>
+                             </div>
+                         </div>
+
+                         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                             <div>
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Updatable Metadata</h4>
+                                <p className="text-[9px] text-slate-500">Allow changes after launch</p>
+                             </div>
+                             <button 
+                                onClick={() => setUpdatableMetadata(!updatableMetadata)}
+                                className={`w-10 h-6 rounded-full p-1 transition-colors ${updatableMetadata ? 'bg-green-500' : 'bg-slate-700'}`}
+                             >
+                                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${updatableMetadata ? 'translate-x-4' : ''}`}></div>
+                             </button>
+                         </div>
+                     </div>
+                 )}
+
+                 {settingsSection === 'rewards' && (
+                     <div className="space-y-4 animate-in fade-in">
+                         {/* Fee Config */}
+                         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                             <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Fee Configuration</h4>
+                             <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setFeeConfig('recommended')}
+                                    className={`flex-1 py-3 px-2 rounded-xl border text-center transition-all ${feeConfig === 'recommended' ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                                >
+                                    <div className="text-[10px] font-black uppercase tracking-widest mb-1">Recommended</div>
+                                    <div className="text-[9px] opacity-70">Dynamic Base + Volatility</div>
+                                </button>
+                                <button 
+                                    onClick={() => setFeeConfig('legacy')}
+                                    className={`flex-1 py-3 px-2 rounded-xl border text-center transition-all ${feeConfig === 'legacy' ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                                >
+                                    <div className="text-[10px] font-black uppercase tracking-widest mb-1">Legacy</div>
+                                    <div className="text-[9px] opacity-70">Fixed % Fees</div>
+                                </button>
+                             </div>
+                         </div>
+
+                         {/* Rewards Config */}
+                         <div className="space-y-3">
+                             <div className="flex justify-between items-center px-1">
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Reward Recipients</h4>
+                                <button onClick={addRecipient} className="text-[9px] font-black text-blue-400 uppercase tracking-widest hover:text-blue-300">+ Add</button>
+                             </div>
+                             
+                             {recipients.map((recipient, idx) => (
+                                 <div key={recipient.id} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 relative group">
+                                     {recipients.length > 1 && (
+                                         <button onClick={() => removeRecipient(recipient.id)} className="absolute top-2 right-2 text-slate-600 hover:text-red-400">
+                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                         </button>
+                                     )}
+                                     
+                                     <div className="flex items-center gap-2 mb-1">
+                                         <span className="text-[9px] font-black bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">#{idx + 1}</span>
+                                         <span className="text-[10px] font-black text-white">{idx === 0 ? 'You (Creator)' : 'Recipient'}</span>
+                                     </div>
+
+                                     <div className="grid grid-cols-[2fr_1fr] gap-2">
+                                         <input 
+                                            type="text"
+                                            placeholder="Wallet Address" 
+                                            value={recipient.address}
+                                            onChange={(e) => updateRecipient(recipient.id, 'address', e.target.value)}
+                                            className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-white outline-none focus:border-blue-500"
+                                         />
+                                         <div className="relative">
+                                            <input 
+                                                type="number"
+                                                value={recipient.percentage}
+                                                onChange={(e) => updateRecipient(recipient.id, 'percentage', Number(e.target.value))}
+                                                className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-white outline-none focus:border-blue-500 text-right pr-6"
+                                            />
+                                            <span className="absolute right-2 top-2 text-[10px] text-slate-500">%</span>
+                                         </div>
+                                     </div>
+
+                                     <div className="grid grid-cols-2 gap-2">
+                                         <input 
+                                            type="text"
+                                            placeholder="Admin Address (Optional)" 
+                                            value={recipient.admin}
+                                            onChange={(e) => updateRecipient(recipient.id, 'admin', e.target.value)}
+                                            className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-mono text-white outline-none focus:border-blue-500"
+                                         />
+                                         <select 
+                                            value={recipient.type}
+                                            onChange={(e) => updateRecipient(recipient.id, 'type', e.target.value)}
+                                            className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-[10px] font-bold text-slate-300 outline-none focus:border-blue-500"
+                                         >
+                                             <option value="paired">Paired (WETH)</option>
+                                             <option value="clanker">Clanker Token</option>
+                                             <option value="both">Both</option>
+                                         </select>
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+                 )}
+             </div>
+           )}
+
+           {/* Preclank Toggle & Main Actions */}
+           <div className="space-y-4 pt-4 border-t border-slate-800/50">
+               <div className="flex items-center justify-between p-2">
+                    <div>
+                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Enable Preclank</h4>
+                        <p className="text-[9px] text-slate-500">Configure now, trigger later via cast</p>
+                    </div>
+                    <button 
+                        onClick={() => setIsPreclankMode(!isPreclankMode)}
+                        className={`w-10 h-6 rounded-full p-1 transition-colors ${isPreclankMode ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                    >
+                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${isPreclankMode ? 'translate-x-4' : ''}`}></div>
+                    </button>
+               </div>
+
+               {isPreclankMode && (
+                   <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                       {/* Farcaster Requirement Notice */}
+                       <div className="flex items-center gap-2 p-3 bg-indigo-900/20 border border-indigo-500/20 rounded-xl">
+                            <span className="text-lg">🆔</span>
+                            <div className="flex-1">
+                                <p className="text-[9px] text-indigo-200">
+                                    <strong>Requirement:</strong> You must be signed in with Farcaster to manage and trigger Preclanks.
+                                </p>
+                                {!isAuthenticated && (
+                                    <p className="text-[9px] text-red-400 font-bold mt-1">Not signed in.</p>
+                                )}
+                            </div>
+                       </div>
+
+                       <div className="space-y-2">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trigger Phrase (Case Sensitive)</label>
+                           <input 
+                                type="text"
+                                value={triggerPhrase}
+                                onChange={(e) => setTriggerPhrase(e.target.value)}
+                                placeholder="e.g. Launch Based Cat @clanker"
+                                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white outline-none focus:border-indigo-500 font-mono"
+                           />
+                           <p className="text-[9px] text-slate-500">
+                               To deploy, you will cast this phrase and tag @clanker exactly as written above.
+                           </p>
+                       </div>
+                   </div>
+               )}
+
+               <div className="grid grid-cols-1 gap-3">
+                  <button 
+                    onClick={isPreclankMode ? handleSavePreclank : handleDeploy}
+                    disabled={isDeploying}
+                    className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden group ${isPreclankMode ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20' : 'bg-green-500 hover:bg-green-400 text-white shadow-green-500/20'}`}
+                  >
+                     {isDeploying ? (
+                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                     ) : (
+                         <>
+                            <span>{isPreclankMode ? 'Save Preclank Config' : 'Deploy Now'}</span>
+                            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                         </>
+                     )}
+                  </button>
+               </div>
+           </div>
+           
+           <button 
+                onClick={() => setTokenData(null)}
+                className="w-full py-2 text-slate-500 font-black text-[9px] uppercase tracking-widest hover:text-slate-300"
+            >
+                Start Over
+           </button>
+        </div>
+      )}
     </div>
   );
 };

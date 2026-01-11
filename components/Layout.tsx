@@ -1,7 +1,5 @@
 
 import React from 'react';
-import { Wallet, ConnectWallet, WalletDropdown, WalletDropdownDisconnect } from '@coinbase/onchainkit/wallet';
-import { Address, Avatar, Name, Identity } from '@coinbase/onchainkit/identity';
 import { ViewState } from '../types';
 
 interface LayoutProps {
@@ -18,31 +16,14 @@ const Layout: React.FC<LayoutProps> = ({ activeView, onNavigate, children }) => 
         <div className="flex items-center gap-3" onClick={() => onNavigate('feed')}>
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-2xl flex items-center justify-center font-black text-white shadow-lg shadow-blue-500/20 active:scale-95 transition-transform cursor-pointer">B</div>
           <div className="cursor-pointer">
-            <h1 className="text-xl font-black tracking-tighter text-white font-mono leading-none">BSORTAB</h1>
+            <h1 className="text-xl font-black tracking-tighter text-white font-mono leading-none">BASELINES</h1>
             <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest">Social Trading OS</span>
           </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <Wallet>
-            <ConnectWallet className="!bg-blue-600 !text-white !rounded-2xl !text-[11px] !font-black !px-4 !py-2 !border-none !shadow-lg">
-              <Avatar className="h-6 w-6" />
-              <Name className="text-[11px]" />
-            </ConnectWallet>
-            <WalletDropdown className="!bg-slate-900 !border !border-slate-800 !rounded-3xl !shadow-2xl">
-              <Identity className="px-4 pt-3 pb-2" hasCopyAddressOnClick>
-                <Avatar />
-                <Name />
-                <Address />
-              </Identity>
-              <WalletDropdownDisconnect className="!text-red-400 !text-xs !font-bold !hover:bg-red-400/10" />
-            </WalletDropdown>
-          </Wallet>
         </div>
       </header>
 
       {/* Content */}
-      <main className={`flex-1 ${activeView === 'feed' ? 'overflow-hidden' : 'overflow-y-auto pb-28'} scroll-smooth no-scrollbar`}>
+      <main className={`flex-1 ${activeView === 'feed' ? 'overflow-hidden' : 'overflow-y-auto pb-32'} scroll-smooth no-scrollbar`}>
         {children}
       </main>
 
@@ -58,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ activeView, onNavigate, children }) => 
             </div>
         </button>
 
-        <NavButton active={activeView === 'checkout'} icon="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" label="Pay" onClick={() => onNavigate('checkout')} />
+        <NavButton active={activeView === 'quests'} icon="M13 10V3L4 14h7v7l9-11h-7z" label="Earn" onClick={() => onNavigate('quests')} />
         <NavButton active={activeView === 'profile'} icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" label="Social" onClick={() => onNavigate('profile')} />
       </nav>
     </div>

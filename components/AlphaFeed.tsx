@@ -2,16 +2,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MOCK_TOKENS } from '../constants';
 import { Token } from '../types';
-import { sdk } from "@farcaster/miniapp-sdk";
+import { sdk } from "../farcasterSdk";
 
 interface AlphaFeedProps {
   onBuyAlpha: () => void;
   onShare: () => void;
+  onInteraction: (action: string) => void;
 }
 
-const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare }) => {
+const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [subscribed, setSubscribed] = useState<Record<string, boolean>>({});
+  const [loadingSub, setLoadingSub] = useState<string | null>(null);
 
   const handleScroll = () => {
     if (containerRef.current) {
@@ -25,6 +28,7 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare }) => {
     // Default to WETH address if mock token has none, for demo purposes
     const target = address || '0x4200000000000000000000000000000000000006';
     sdk.actions.openUrl(`https://basescan.org/token/${target}`);
+    onInteraction('OPEN_TOKEN_DETAILS');
   };
 
   const handleOpenProfile = (e: React.MouseEvent, username: string) => {
@@ -32,6 +36,24 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare }) => {
     // Clean username and open Warpcast profile
     const handle = username.replace('@', '');
     sdk.actions.openUrl(`https://warpcast.com/${handle}`);
+  };
+
+  const handleSubscribe = async (e: React.MouseEvent, symbol: string) => {
+    e.stopPropagation();
+    if (subscribed[symbol] || loadingSub) return;
+    
+    setLoadingSub(symbol);
+    try {
+        const result = await sdk.actions.addMiniApp();
+        if (result.added) {
+            setSubscribed(prev => ({...prev, [symbol]: true}));
+            onInteraction('ENABLE_NOTIFICATIONS');
+        }
+    } catch (err) {
+        console.error("Failed to subscribe", err);
+    } finally {
+        setLoadingSub(null);
+    }
   };
 
   const CreatorCard = ({ token, isActive }: { token: Token, isActive: boolean }) => (
@@ -66,11 +88,24 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare }) => {
                 </span>
              </div>
           </div>
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end gap-2">
              <span className={`text-lg font-black font-mono drop-shadow-md ${token.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {token.change24h > 0 ? '+' : ''}{token.change24h}%
              </span>
-             <span className="text-xs text-slate-300 font-bold opacity-80">24h Change</span>
+             
+             {/* Bell / Subscribe Button */}
+             <button 
+                onClick={(e) => handleSubscribe(e, token.symbol)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${subscribed[token.symbol] ? 'bg-yellow-500 border-yellow-400 text-slate-950' : 'bg-slate-900/50 border-white/20 text-white hover:bg-white/20'}`}
+             >
+                {loadingSub === token.symbol ? (
+                   <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                   <svg className="w-4 h-4" fill={subscribed[token.symbol] ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                   </svg>
+                )}
+             </button>
           </div>
        </div>
 

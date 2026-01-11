@@ -8,6 +8,15 @@ export const XP_REWARDS = {
   SHARE: 25,
   SHARE_PNL: 40,
   FOLLOW: 15,
+  ENABLE_NOTIFICATIONS: 150,
+  VIEW_CHART: 5,
+  GENERATE_METADATA: 20,
+  SAVE_PRECLANK: 75,
+  DEPLOY_TOKEN: 500,
+  CONNECT_WALLET: 50,
+  CHECK_LEADERBOARD: 5,
+  OPEN_TOKEN_DETAILS: 10,
+  SWITCH_TAB: 2
 };
 
 export const TIER_THRESHOLDS = {
@@ -126,14 +135,19 @@ export const INITIAL_USER: UserProfile = {
   winRate: 68.2,
   totalVolume: 125000,
   pnlNet: 4200.50,
+  notificationsEnabled: false,
+  xpHistory: [
+    { id: '1', action: 'SWAP', amount: 50, timestamp: Date.now() - 100000 },
+    { id: '2', action: 'DAILY_GM', amount: 10, timestamp: Date.now() - 200000 },
+  ],
 };
 
 export const MOCK_LEADERBOARD: UserProfile[] = [
-  { address: '0x71...f2a1', fid: 1, username: 'Vitalik', xp: 999999, pendingXp: 0, level: 99, tier: 'ELITE', reputation: 999, badges: ['God Tier'], followers: 1000000, winRate: 99.9, totalVolume: 10000000, pnlNet: 5000000 },
-  { address: '0x12...99ee', fid: 88, username: 'BaseAlpha', xp: 85000, pendingXp: 120, level: 45, tier: 'ELITE', reputation: 940, badges: ['Whale', 'Degen'], followers: 12400, winRate: 72.1, totalVolume: 2500000, pnlNet: 120000 },
-  { address: '0xabc...1234', fid: 420, username: 'DegenKing', xp: 52000, pendingXp: 50, level: 28, tier: 'GOLD', reputation: 880, badges: ['Risk Taker'], followers: 5200, winRate: 58.4, totalVolume: 800000, pnlNet: 45000 },
+  { address: '0x71...f2a1', fid: 1, username: 'Vitalik', xp: 999999, pendingXp: 0, level: 99, tier: 'ELITE', reputation: 999, badges: ['God Tier'], followers: 1000000, winRate: 99.9, totalVolume: 10000000, pnlNet: 5000000, xpHistory: [] },
+  { address: '0x12...99ee', fid: 88, username: 'BaseAlpha', xp: 85000, pendingXp: 120, level: 45, tier: 'ELITE', reputation: 940, badges: ['Whale', 'Degen'], followers: 12400, winRate: 72.1, totalVolume: 2500000, pnlNet: 120000, xpHistory: [] },
+  { address: '0xabc...1234', fid: 420, username: 'DegenKing', xp: 52000, pendingXp: 50, level: 28, tier: 'GOLD', reputation: 880, badges: ['Risk Taker'], followers: 5200, winRate: 58.4, totalVolume: 800000, pnlNet: 45000, xpHistory: [] },
   INITIAL_USER,
-  { address: '0xfee...4421', fid: 1024, username: 'NewDegen', xp: 8400, pendingXp: 200, level: 5, tier: 'BRONZE', reputation: 420, badges: ['Newbie'], followers: 12, winRate: 45.0, totalVolume: 1500, pnlNet: -200 },
+  { address: '0xfee...4421', fid: 1024, username: 'NewDegen', xp: 8400, pendingXp: 200, level: 5, tier: 'BRONZE', reputation: 420, badges: ['Newbie'], followers: 12, winRate: 45.0, totalVolume: 1500, pnlNet: -200, xpHistory: [] },
 ];
 
 export const PORTFOLIO_HISTORY: PortfolioHistory[] = [

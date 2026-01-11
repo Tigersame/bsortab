@@ -5,14 +5,13 @@ export async function analyzeAlphaFeed(trades: string): Promise<string> {
   const apiKey = process.env.API_KEY;
   if (!apiKey) return "Alpha feed initialization in progress...";
   
-  const ai = new GoogleGenAI({ apiKey });
-  
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Summarize this on-chain trade activity into a sharp, viral-style 2-sentence alpha alert for a social trading app. Mention potential whale movements or trends. Data: ${trades}`,
       config: {
-        systemInstruction: "You are an elite on-chain analyst for BSORTAB. Your goal is to find 'Alpha' (profitable insights). Use a confident, professional trader tone with a hint of Degen energy.",
+        systemInstruction: "You are an elite on-chain analyst for BASELINES. Your goal is to find 'Alpha' (profitable insights). Use a confident, professional trader tone with a hint of Degen energy.",
         temperature: 0.7,
       },
     });
@@ -28,14 +27,13 @@ export async function checkTokenSafety(tokenName: string, creator: string): Prom
   const apiKey = process.env.API_KEY;
   if (!apiKey) return "Safety engine warming up...";
 
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Quick vibe check for token ${tokenName} by ${creator}. Is this high risk, a potential moonshot, or a typical community token? Be concise.`,
       config: {
-        systemInstruction: "You are BSORTAB's safety protocol. Be blunt, fast, and use trader slang.",
+        systemInstruction: "You are BASELINES's safety protocol. Be blunt, fast, and use trader slang.",
       }
     });
     
@@ -50,8 +48,8 @@ export async function generateTokenManifesto(name: string, symbol: string, theme
   const apiKey = process.env.API_KEY;
   if (!apiKey) return "Manifesto generation unavailable.";
 
-  const ai = new GoogleGenAI({ apiKey });
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Write a short, viral, 1-sentence manifesto (max 15 words) for a new crypto token named "${name}" ($${symbol}). The theme/vibe is: "${theme}". Use emoji to make it pop. It should feel like a TikTok caption.`,
@@ -77,23 +75,32 @@ export async function generateTokenMetadata(prompt: string): Promise<{ name: str
 
   if (!apiKey) return fallback;
 
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate a viral crypto token profile based on this user idea: "${prompt}". Return a JSON object with keys: 'name' (creative name), 'symbol' (max 5 chars), 'description' (max 100 chars, funny/engaging).`,
+      contents: `Generate a creative crypto token based on this user idea: "${prompt}". 
+      
+      Return ONLY a JSON object with these fields:
+      - name: Token Name
+      - symbol: Ticker (3-5 letters)
+      - description: Short catchy description (max 120 chars)
+      
+      Example: {"name": "Super Base", "symbol": "BASE", "description": "The best token on chain."}`,
       config: {
         responseMimeType: "application/json",
-        systemInstruction: "You are an AI Token Launcher (Clanker-style). You create meme-worthy, degen-friendly, or serious token profiles based on short prompts. Be creative and concise.",
       }
     });
 
-    const text = response.text;
+    let text = response.text || "";
+    // Strip potential markdown code blocks
+    text = text.replace(/```json\n?|\n?```/g, '').trim();
+    
     if (!text) return fallback;
     return JSON.parse(text);
   } catch (error) {
     console.error("Metadata Gen Error:", error);
+    // Return fallback silently if fetch fails (e.g. COOP error)
     return fallback;
   }
 }

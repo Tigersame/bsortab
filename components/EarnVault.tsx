@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
@@ -176,7 +177,7 @@ const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
       </div>
 
       <p className="text-[9px] text-center text-slate-600 font-mono uppercase px-8">
-        Deposits are supplied to the Morpho Blue protocol on Base. Yield is variable and accrues per block. Use BSORTAB for maximum efficiency.
+        Deposits are supplied to the Morpho Blue protocol on Base. Yield is variable and accrues per block. Use BASELINES for maximum efficiency.
       </p>
     </div>
   );

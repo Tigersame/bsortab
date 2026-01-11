@@ -3,14 +3,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BSORTAB | Social Trading OS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BASELINES | Social Trading OS</title>
     
     <!-- Farcaster Mini App Metadata -->
-    <meta property="fc:miniapp" content='{"imageUrl": "https://api.dicebear.com/7.x/identicon/svg?seed=BSORTAB&backgroundColor=020617", "button": {"title": "Launch BSORTAB", "action": {"type": "launch_frame", "url": "https://bsortab.app"}}}' />
-    <meta property="og:title" content="BSORTAB | Social Trading Terminal" />
+    <meta property="fc:miniapp" content='{"imageUrl": "https://api.dicebear.com/7.x/identicon/svg?seed=BASELINES&backgroundColor=020617", "button": {"title": "Launch BASELINES", "action": {"type": "launch_frame", "url": "https://baselines.app"}}}' />
+    <meta property="og:title" content="BASELINES | Social Trading Terminal" />
     <meta property="og:description" content="Trade, Launch, and Earn with Social Alpha on Base." />
-    <meta property="og:image" content="https://api.dicebear.com/7.x/identicon/svg?seed=BSORTAB&backgroundColor=020617" />
+    <meta property="og:image" content="https://api.dicebear.com/7.x/identicon/svg?seed=BASELINES&backgroundColor=020617" />
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -18,21 +18,40 @@
     
     <style>
         :root {
-          --ock-bg-default: #0f172a;
-          --ock-bg-secondary: #1e293b;
+          --ock-bg-default: #0b1220;
+          --ock-bg-secondary: #0e1627;
           --ock-text-primary: #f8fafc;
           --ock-text-inverse: #020617;
           --ock-accent: #3b82f6;
           --ock-border-radius: 1.5rem;
         }
+        
+        /* Mini App Critical Resets */
+        * {
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Critical for Mini Apps */
+            background-color: #020617;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617;
             color: #f8fafc;
             margin: 0;
-            overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
         }
+        #root {
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* Base Spec Input Height */
+        input {
+            min-height: 44px; /* Touch target size */
+        }
+
         .font-mono { font-family: 'JetBrains Mono', monospace; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
@@ -42,29 +61,16 @@
             backdrop-filter: blur(16px);
             border: 1px solid rgba(51, 65, 85, 0.4);
         }
-        .active-glow {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes float {
-          0% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-          100% { transform: translateY(0px); }
-        }
-        .animate-float { animation: float 3s ease-in-out infinite; }
         
         /* Animation Utilities */
         .animate-in { animation-duration: 0.5s; animation-fill-mode: both; }
         .fade-in { animation-name: fadeIn; }
         .slide-in-from-bottom-4 { animation-name: slideInBottom; }
-        .slide-in-from-left-2 { animation-name: slideInLeft; }
-        .zoom-in-95 { animation-name: zoomIn95; }
         
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideInBottom { from { transform: translateY(1rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes slideInLeft { from { transform: translateX(-0.5rem); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/buffer/6.0.3/buffer.min.js"></script>
@@ -81,7 +87,7 @@
     "react-dom": "https://esm.sh/react-dom@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
-    "@google/genai": "https://esm.sh/@google/genai@1.3.0",
+    "@google/genai": "https://esm.sh/@google/genai",
     "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
     "wagmi": "https://esm.sh/wagmi@2.12.7?deps=react@18.2.0,react-dom@18.2.0",
     "wagmi/chains": "https://esm.sh/wagmi@2.12.7/chains?deps=react@18.2.0,react-dom@18.2.0",
@@ -96,6 +102,7 @@
     "@base-org/account": "https://esm.sh/@base-org/account?deps=react@18.2.0,react-dom@18.2.0",
     "@base-org/account-ui/react": "https://esm.sh/@base-org/account-ui/react?deps=react@18.2.0,react-dom@18.2.0",
     "@farcaster/miniapp-sdk": "./farcasterSdk.tsx",
+    "@neynar/react": "./neynarSdk.tsx",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
     "@coinbase/onchainkit/": "https://esm.sh/@coinbase/onchainkit@^1.1.2/",
@@ -110,4 +117,3 @@
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
-    

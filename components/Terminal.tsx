@@ -1,18 +1,44 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Swap, SwapAmountInput, SwapToggleButton, SwapButton, SwapMessage } from '@coinbase/onchainkit/swap';
-import { MOCK_TOKENS, PORTFOLIO_HISTORY, INITIAL_USER } from '../constants';
+import { MOCK_TOKENS, INITIAL_USER, XP_REWARDS } from '../constants';
 import EarnVault from './EarnVault';
-import { sdk } from "@farcaster/miniapp-sdk";
+import { sdk } from "../farcasterSdk";
 
 interface TerminalProps {
   onSwap: () => void;
   onSharePnL: () => void;
   onEarnSuccess: () => void;
+  onInteraction: (action: string) => void;
 }
 
-// Helper: Generate Mock Order Book Data
+// ----------------------------------------------------------------------
+// Optimized Sub-Components for Mini App Performance
+// ----------------------------------------------------------------------
+
+const TokenRow = memo(({ token, isSelected, onClick }: { token: any, isSelected: boolean, onClick: (t: any) => void }) => (
+  <button
+    onClick={() => onClick(token)}
+    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all min-h-[44px] border border-transparent ${isSelected ? 'bg-blue-900/20 border-blue-500/30' : 'active:bg-[#111c33]'}`}
+  >
+    <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center overflow-hidden border border-slate-800 shrink-0">
+       <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
+    </div>
+    <div className="flex-1 text-left">
+        <div className="flex items-center gap-2">
+            <span className="font-bold text-white text-base">{token.symbol}</span>
+            {token.chainId === 8453 && <span className="text-[9px] font-black bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded-md">BASE</span>}
+        </div>
+        <span className="text-[11px] font-medium text-slate-500">{token.name}</span>
+    </div>
+    <div className="text-right">
+       <span className="block text-sm font-medium text-white">0.00</span>
+    </div>
+  </button>
+));
+
 const generateOrderBook = (basePrice: number) => {
   const bids = Array.from({ length: 6 }).map((_, i) => ({
     price: basePrice * (1 - (i + 1) * 0.002),
@@ -27,17 +53,29 @@ const generateOrderBook = (basePrice: number) => {
   return { bids, asks };
 };
 
-const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'swap' | 'portfolio' | 'earn'>('portfolio');
-  const [selectedChart, setSelectedChart] = useState<string>('PORTFOLIO');
+const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, onInteraction }) => {
+  const [activeTab, setActiveTab] = useState<'swap' | 'portfolio' | 'earn'>('swap');
+  const [selectedChart, setSelectedChart] = useState<string>('ETH');
+  const [timeframe, setTimeframe] = useState<'1H' | '1D' | '1W' | '1M'>('1D');
   const [chartData, setChartData] = useState<any[]>([]);
   const [slippage, setSlippage] = useState(0.5);
-  const [orderBook, setOrderBook] = useState<{bids: any[], asks: any[]}>({ bids: [], asks: [] });
   
-  // 1. Initialize Chart Data (Mock History)
+  const [selectorType, setSelectorType] = useState<'from' | 'to' | null>(null);
+
+  const swappableTokens = useMemo(() => MOCK_TOKENS.map(t => ({
+    name: t.name,
+    symbol: t.symbol,
+    address: (t.address || '') as `0x${string}` | '',
+    decimals: t.decimals ?? 18,
+    image: t.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${t.symbol}`,
+    chainId: 8453
+  })), []);
+
+  const [fromToken, setFromToken] = useState<any>(swappableTokens.find(t => t.symbol === 'ETH') || swappableTokens[0]);
+  const [toToken, setToToken] = useState<any>(swappableTokens.find(t => t.symbol === 'USDC') || swappableTokens[1]);
+  
   useEffect(() => {
     let basePrice = 0;
-    
     if (selectedChart === 'PORTFOLIO') {
       basePrice = INITIAL_USER.totalVolume;
     } else {
@@ -45,325 +83,258 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess }
       basePrice = token ? token.price : 0;
     }
 
-    // Init Order Book based on price
-    setOrderBook(generateOrderBook(basePrice || 1));
-
     if (basePrice > 0) {
       const data = [];
       const now = Date.now();
       let price = basePrice;
+      const points = timeframe === '1H' ? 60 : timeframe === '1D' ? 24 : 30;
+      const interval = timeframe === '1H' ? 60000 : 3600000;
       
-      // Generate 60 points of historical data
-      for (let i = 60; i >= 0; i--) {
-        // Random walk volatility
-        const volatility = 0.02; // 2% range
+      for (let i = points; i >= 0; i--) {
+        const volatility = timeframe === '1H' ? 0.005 : 0.05; 
         const change = 1 + (Math.random() - 0.5) * volatility;
         price = price * change;
-        
         data.push({
-          timestamp: new Date(now - i * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          timestamp: new Date(now - i * interval).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           value: price
         });
       }
       setChartData(data);
     }
-  }, [selectedChart]);
-
-  // 2. Live Updates Simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(currentData => {
-        if (currentData.length === 0) return currentData;
-
-        const lastPoint = currentData[currentData.length - 1];
-        const volatility = 0.005; // 0.5% volatility per tick
-        const change = 1 + (Math.random() - 0.5) * volatility;
-        const newPrice = lastPoint.value * change;
-        
-        const newPoint = {
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          value: newPrice
-        };
-
-        // Update Order Book occasionally
-        if (Math.random() > 0.7) {
-          setOrderBook(generateOrderBook(newPrice));
-        }
-
-        // Keep window size constant (remove first, add last)
-        const newData = [...currentData.slice(1), newPoint];
-        return newData;
-      });
-    }, 1000); // Update every second
-
-    return () => clearInterval(interval);
-  }, [selectedChart]); // Restart interval on chart change
-
-  // Map MOCK_TOKENS to OnchainKit Swappable Tokens with Real Addresses
-  const swappableTokens = MOCK_TOKENS.map(t => ({
-    name: t.name,
-    symbol: t.symbol,
-    address: (t.address || '') as `0x${string}` | '',
-    decimals: t.decimals ?? 18,
-    image: t.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${t.symbol}`,
-    chainId: 8453
-  }));
+  }, [selectedChart, timeframe]);
 
   const currentToken = MOCK_TOKENS.find(t => t.symbol === selectedChart);
-  
-  // Calculate dynamic stats based on chart data
   const latestValue = chartData.length > 0 ? chartData[chartData.length - 1].value : 0;
   const startValue = chartData.length > 0 ? chartData[0].value : 1;
   const isPositive = latestValue >= startValue;
   const percentChange = ((latestValue - startValue) / startValue) * 100;
 
-  // Derived Pro Stats
-  const high24h = Math.max(...chartData.map(d => d.value)) * 1.02;
-  const low24h = Math.min(...chartData.map(d => d.value)) * 0.98;
+  const handleSwapSuccess = () => {
+    onSwap();
+  };
+
+  const handleSelectToken = (token: any) => {
+    if (selectorType === 'from') setFromToken(token);
+    if (selectorType === 'to') setToToken(token);
+    setSelectorType(null);
+  };
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Chart Section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 space-y-4 shadow-xl relative overflow-hidden">
-        {/* Token Selector */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-           <button 
-             onClick={() => setSelectedChart('PORTFOLIO')}
-             className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedChart === 'PORTFOLIO' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-500 border border-slate-800'}`}
-           >
-             Portfolio
-           </button>
-           {MOCK_TOKENS.map(t => (
-             <button 
-               key={t.symbol}
-               onClick={() => setSelectedChart(t.symbol)}
-               className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedChart === t.symbol ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950 text-slate-500 border border-slate-800'}`}
-             >
-               ${t.symbol}
-             </button>
-           ))}
-        </div>
-
-        <div className="flex justify-between items-end">
-          <div>
-            <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                  {selectedChart === 'PORTFOLIO' ? 'Net Worth' : `${currentToken?.name} Price`}
-                </span>
-                {currentToken && (
-                    <button 
-                        onClick={() => sdk.actions.openUrl(`https://basescan.org/token/${currentToken.address || '0x4200000000000000000000000000000000000006'}`)}
-                        className="text-slate-600 hover:text-blue-400 transition-colors"
-                        title="View on Explorer"
-                    >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+    <div className="p-4 space-y-4 pb-32 relative">
+      {/* 
+        -----------------------------------------------------------------------
+        TOKEN SELECTOR PORTAL (Bottom Sheet) 
+        Fixed inset-0 backdrop, absolute bottom sheet.
+        -----------------------------------------------------------------------
+      */}
+      {selectorType && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999]" style={{ zIndex: 9999 }}>
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-200" 
+              onClick={() => setSelectorType(null)} 
+            />
+            
+            {/* Sheet */}
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-[#0b1220] rounded-t-[20px] p-4 shadow-2xl animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[70vh]"
+            >
+                <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-6" />
+                
+                <div className="flex justify-between items-center mb-4 px-2">
+                    <h3 className="text-base font-bold text-white">Select Token</h3>
+                    <button onClick={() => setSelectorType(null)} className="p-2 bg-[#111c33] rounded-full text-slate-400">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
-                )}
-            </div>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-black text-white font-mono tracking-tighter">
-                ${latestValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-              </h2>
-              <span className={`font-bold text-xs ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                {percentChange > 0 ? '+' : ''}{percentChange.toFixed(2)}%
-              </span>
-            </div>
-          </div>
-          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl items-center">
-             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse mx-1"></div>
-             <span className="text-[9px] font-black text-green-400 uppercase tracking-widest pr-2">Live</span>
-          </div>
-        </div>
+                </div>
 
-        <div className="h-48 w-full -ml-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={isPositive ? "#3b82f6" : "#ef4444"} stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor={isPositive ? "#3b82f6" : "#ef4444"} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              <XAxis dataKey="timestamp" hide />
-              <YAxis domain={['auto', 'auto']} hide />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '1rem', padding: '0.5rem' }}
-                itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                labelStyle={{ display: 'none' }}
-                formatter={(value: number) => [`$${value.toFixed(4)}`, 'Price']}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="value" 
-                stroke={isPositive ? "#3b82f6" : "#ef4444"} 
-                fillOpacity={1} 
-                fill="url(#colorVal)" 
-                strokeWidth={3} 
-                animationDuration={500}
-                isAnimationActive={false} 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+                <div className="overflow-y-auto overscroll-contain no-scrollbar space-y-1 pb-8" style={{ maxHeight: '520px' }}>
+                    {swappableTokens.map((t) => (
+                        <TokenRow 
+                            key={t.symbol} 
+                            token={t} 
+                            isSelected={(selectorType === 'from' && fromToken?.symbol === t.symbol) || (selectorType === 'to' && toToken?.symbol === t.symbol)}
+                            onClick={handleSelectToken}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>,
+        document.body
+      )}
 
-      {/* Tabs */}
-      <div className="flex bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
-        <button onClick={() => setActiveTab('portfolio')} className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'portfolio' ? 'bg-slate-800 text-white shadow-lg border border-slate-700' : 'text-slate-500'}`}>Positions</button>
-        <button onClick={() => setActiveTab('swap')} className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'swap' ? 'bg-slate-800 text-white shadow-lg border border-slate-700' : 'text-slate-500'}`}>Trade OS</button>
-        <button onClick={() => setActiveTab('earn')} className={`flex-1 py-2.5 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'earn' ? 'bg-slate-800 text-white shadow-lg border border-slate-700' : 'text-slate-500'}`}>Vaults</button>
+      {/* Navigation Tabs (Top) */}
+      <div className="flex bg-[#0b1220] p-1 rounded-2xl border border-slate-800/50 sticky top-0 z-20 shadow-md">
+        <button onClick={() => setActiveTab('swap')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'swap' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Trade</button>
+        <button onClick={() => setActiveTab('portfolio')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'portfolio' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Assets</button>
+        <button onClick={() => setActiveTab('earn')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'earn' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Earn</button>
       </div>
 
       {activeTab === 'swap' && (
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-4">
+        <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-300">
           
-          {/* Pro Header Stats */}
-          <div className="grid grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
-            <div className="space-y-1">
-              <span className="text-[9px] text-slate-500 uppercase font-black">24h High</span>
-              <p className="text-[10px] text-white font-mono">${high24h.toFixed(2)}</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[9px] text-slate-500 uppercase font-black">24h Low</span>
-              <p className="text-[10px] text-white font-mono">${low24h.toFixed(2)}</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[9px] text-slate-500 uppercase font-black">Vol (24h)</span>
-              <p className="text-[10px] text-blue-400 font-mono">1.2M</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[9px] text-slate-500 uppercase font-black">Mkt Cap</span>
-              <p className="text-[10px] text-green-400 font-mono">42M</p>
-            </div>
+          {/* Chart Preview */}
+          <div className="w-full max-w-[420px] h-32 bg-[#0b1220] rounded-[20px] overflow-hidden relative border border-white/5">
+             <div className="absolute top-3 left-4 z-10">
+                <h3 className="text-xl font-bold text-white tracking-tight">${latestValue.toLocaleString()}</h3>
+                <span className={`text-xs font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>{percentChange > 0 ? '+' : ''}{percentChange.toFixed(2)}%</span>
+             </div>
+             <ResponsiveContainer width="100%" height="100%">
+               <AreaChart data={chartData}>
+                 <defs>
+                   <linearGradient id="colorVal2" x1="0" y1="0" x2="0" y2="1">
+                     <stop offset="5%" stopColor={isPositive ? "#3b82f6" : "#ef4444"} stopOpacity={0.2}/>
+                     <stop offset="95%" stopColor={isPositive ? "#3b82f6" : "#ef4444"} stopOpacity={0}/>
+                   </linearGradient>
+                 </defs>
+                 <Area type="monotone" dataKey="value" stroke={isPositive ? "#3b82f6" : "#ef4444"} strokeWidth={2} fill="url(#colorVal2)" />
+               </AreaChart>
+             </ResponsiveContainer>
           </div>
 
-          <div className="bg-slate-900/40 p-2 rounded-[2.5rem] border border-slate-800 relative">
-             {/* Settings / Slippage */}
-             <div className="absolute top-6 right-6 z-10">
-               <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
-                  {[0.5, 1, 3].map(val => (
-                    <button 
-                      key={val}
-                      onClick={() => setSlippage(val)}
-                      className={`px-2 py-1 rounded text-[9px] font-black ${slippage === val ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                      {val}%
-                    </button>
-                  ))}
-               </div>
+          {/* 
+             -------------------------------------------------------------------
+             SWAP CARD - BASE SPEC 
+             Max-width: 420px, Padding: 16px, Radius: 20px
+             BG: Linear Gradient #0b1220 -> #060b16
+             -------------------------------------------------------------------
+          */}
+          <div 
+             className="w-full max-w-[420px] p-4 rounded-[20px] shadow-[0_8px_40px_rgba(0,0,0,0.45)] relative"
+             style={{ background: 'linear-gradient(180deg, #0b1220, #060b16)' }}
+          >
+             <div className="flex justify-between items-center mb-4 px-1">
+                 <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Swap</h2>
+                 <div className="flex gap-1">
+                    {[0.5, 1, 3].map(v => (
+                        <button key={v} onClick={() => setSlippage(v)} className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${slippage === v ? 'bg-[#111c33] text-blue-400 border border-blue-500/30' : 'text-slate-600 hover:text-slate-400'}`}>{v}%</button>
+                    ))}
+                 </div>
              </div>
 
-             <Swap className="!bg-transparent !border-none !p-0" onSuccess={onSwap}>
-                <SwapAmountInput
-                  label="Sell"
-                  swappableTokens={swappableTokens}
-                  type="from"
-                  className="!bg-slate-900 !border !border-slate-800 !rounded-[2rem] !p-5 !shadow-inner"
-                />
-                <div className="flex justify-center -my-6 relative z-10">
-                  <SwapToggleButton className="!bg-slate-950 !border-4 !border-slate-900 !rounded-2xl !p-3 !text-blue-500 hover:!scale-110 !transition-transform shadow-xl" />
+             <Swap className="!p-0 !bg-transparent !border-none !space-y-0" onSuccess={handleSwapSuccess}>
+                
+                {/* 
+                    SWAP WRAPPER 
+                    Contains both inputs to allow relative positioning of the arrow 
+                */}
+                <div className="relative flex flex-col gap-2">
+                    
+                    {/* INPUT ROW 1: Sell */}
+                    <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-[#0e1627] border border-transparent">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase">Sell</span>
+                            <span className="text-[11px] font-mono text-slate-500">Bal: 4.204</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                            <SwapAmountInput
+                                label=""
+                                swappableTokens={[fromToken]}
+                                token={fromToken}
+                                type="from"
+                                className="!w-full !flex-1 !bg-transparent !border-none !p-0 !text-[28px] !font-[600] !tracking-[-0.02em] !text-white !outline-none placeholder:!text-slate-700 !shadow-none min-h-[44px]"
+                            />
+                            {/* Token Pill Button */}
+                            <button 
+                                onClick={() => setSelectorType('from')}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111c33] hover:bg-[#1a2845] transition-colors shrink-0 min-h-[36px]"
+                            >
+                                <img src={fromToken.image} className="w-5 h-5 rounded-full" alt="" />
+                                <span className="text-sm font-bold text-white">{fromToken.symbol}</span>
+                                <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </div>
+                        <span className="text-xs text-slate-600 font-mono">≈ $12,450.20</span>
+                    </div>
+
+                    {/* 
+                        SWAP ARROW
+                        Absolute centered relative to the wrapper containing both inputs.
+                    */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                        <div className="w-9 h-9 rounded-xl bg-[#111c33] border-4 border-[#0b1220] flex items-center justify-center shadow-lg pointer-events-auto">
+                            <SwapToggleButton className="!w-5 !h-5 !text-blue-400 !bg-transparent !border-none hover:!text-white" />
+                        </div>
+                    </div>
+
+                    {/* INPUT ROW 2: Buy */}
+                    <div className="flex flex-col gap-3 p-4 rounded-[16px] bg-[#0e1627] border border-transparent">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-slate-500 uppercase">Buy</span>
+                            <span className="text-[11px] font-mono text-slate-500">Bal: 0.00</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <SwapAmountInput
+                                label=""
+                                swappableTokens={[toToken]}
+                                token={toToken}
+                                type="to"
+                                className="!w-full !flex-1 !bg-transparent !border-none !p-0 !text-[28px] !font-[600] !tracking-[-0.02em] !text-white !outline-none placeholder:!text-slate-700 !shadow-none min-h-[44px]"
+                            />
+                            <button 
+                                onClick={() => setSelectorType('to')}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111c33] hover:bg-[#1a2845] transition-colors shrink-0 min-h-[36px]"
+                            >
+                                <img src={toToken.image} className="w-5 h-5 rounded-full" alt="" />
+                                <span className="text-sm font-bold text-white">{toToken.symbol}</span>
+                                <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                        </div>
+                        <span className="text-xs text-slate-600 font-mono">≈ $0.00</span>
+                    </div>
+
                 </div>
-                <SwapAmountInput
-                  label="Buy"
-                  swappableTokens={swappableTokens}
-                  type="to"
-                  className="!bg-slate-900 !border !border-slate-800 !rounded-[2rem] !p-5 !shadow-inner"
-                />
-                <div className="mt-4 px-2">
-                  <SwapButton className="!w-full !py-4 !bg-blue-600 !text-white !rounded-3xl !font-black !text-sm !uppercase !tracking-widest !transition-all !shadow-2xl !active:scale-95 hover:!bg-blue-500" />
+
+                <div className="pt-2">
+                    <SwapButton className="!w-full !min-h-[48px] !bg-[#0052ff] !text-white !rounded-[16px] !font-bold !text-base !normal-case !tracking-normal !shadow-lg hover:!bg-blue-600 active:!scale-[0.98] transition-all" />
                 </div>
-                <SwapMessage className="!text-slate-500 !text-[10px] !mt-4 !text-center !pb-4" />
+                
+                <SwapMessage className="!text-red-400 !text-xs !font-medium !text-center !bg-red-900/10 !p-2 !rounded-lg !mt-3 !mx-1" />
              </Swap>
           </div>
 
-          {/* Pro Features: Order Book & Recent Trades */}
-          <div className="grid grid-cols-2 gap-4">
-             {/* Order Book */}
-             <div className="bg-slate-900 border border-slate-800 rounded-[1.5rem] p-4 overflow-hidden">
-               <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 flex justify-between">
-                 <span>Order Book</span>
-                 <span>Spread: 0.2%</span>
-               </h3>
-               <div className="space-y-1 font-mono text-[9px]">
-                 {orderBook.asks.slice(-5).map((ask: any, i: number) => (
-                   <div key={`ask-${i}`} className="flex justify-between items-center relative group">
-                     <div className="absolute right-0 top-0 bottom-0 bg-rose-500/10 transition-all duration-300" style={{ width: `${(ask.amount / 1500) * 100}%` }}></div>
-                     <span className="text-rose-400 relative z-10 font-bold">{ask.price.toFixed(4)}</span>
-                     <span className="text-slate-400 relative z-10">{ask.amount.toFixed(2)}</span>
-                   </div>
-                 ))}
-                 <div className="h-px bg-slate-800 my-2"></div>
-                 {orderBook.bids.slice(0, 5).map((bid: any, i: number) => (
-                   <div key={`bid-${i}`} className="flex justify-between items-center relative group">
-                     <div className="absolute right-0 top-0 bottom-0 bg-emerald-500/10 transition-all duration-300" style={{ width: `${(bid.amount / 1500) * 100}%` }}></div>
-                     <span className="text-emerald-400 relative z-10 font-bold">{bid.price.toFixed(4)}</span>
-                     <span className="text-slate-400 relative z-10">{bid.amount.toFixed(2)}</span>
-                   </div>
-                 ))}
-               </div>
-             </div>
-
-             {/* Recent Trades */}
-             <div className="bg-slate-900 border border-slate-800 rounded-[1.5rem] p-4">
-               <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Recent Trades</h3>
-               <div className="space-y-2 font-mono text-[9px]">
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const isBuy = Math.random() > 0.5;
-                    return (
-                      <div key={i} className="flex justify-between items-center">
-                        <span className={isBuy ? 'text-emerald-400' : 'text-rose-400'}>{latestValue.toFixed(4)}</span>
-                        <span className="text-slate-300">{(Math.random() * 1000).toFixed(0)}</span>
-                        <span className="text-slate-500">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                      </div>
-                    )
-                  })}
-               </div>
-             </div>
+          <div className="flex gap-2 w-full max-w-[420px] justify-center text-[10px] text-slate-500 font-medium">
+             <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Gas: Low</span>
+             <span>•</span>
+             <span>Route: Uniswap V3</span>
           </div>
 
-          <button 
-            onClick={onSharePnL}
-            className="w-full py-4 bg-slate-900/80 border border-slate-700/50 text-slate-300 rounded-[1.8rem] text-[11px] font-black uppercase tracking-[0.15em] hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-3 active:scale-95 shadow-lg group"
-          >
-            <svg className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
-            </svg>
-            Broadcast Trade Setup
-          </button>
         </div>
       )}
 
       {activeTab === 'portfolio' && (
-        <div className="space-y-4 animate-in fade-in duration-300">
-           {MOCK_TOKENS.map(t => (
-             <div 
-               key={t.symbol} 
-               onClick={() => setSelectedChart(t.symbol)}
-               className={`p-5 rounded-[2rem] border flex justify-between items-center group transition-all cursor-pointer ${selectedChart === t.symbol ? 'bg-blue-900/20 border-blue-500/50' : 'bg-slate-900 border-slate-800 hover:bg-slate-800 hover:border-slate-700'}`}
-             >
-               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center font-black text-blue-500 text-lg shadow-inner group-hover:scale-105 transition-transform">
-                    {t.logoUrl ? <img src={t.logoUrl} alt={t.symbol} className="w-8 h-8 object-contain" /> : t.symbol[0]}
+         <div className="space-y-4 animate-in fade-in">
+             <div className="w-full p-4 rounded-[20px] bg-[#0b1220] border border-white/5">
+                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Your Assets</h3>
+                 <div className="space-y-2">
+                    {MOCK_TOKENS.map((t) => (
+                        <div key={t.symbol} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/30 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <img src={t.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${t.symbol}`} className="w-8 h-8 rounded-full" alt="" />
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-sm font-bold text-white">{t.symbol}</div>
+                                        {t.socialScore && (
+                                            <div className="flex items-center gap-0.5 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                                                <span className="text-[8px] font-black text-blue-400 uppercase">Score</span>
+                                                <span className="text-[9px] font-bold text-white">{t.socialScore}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500">{t.name}</div>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-sm font-bold text-white">$0.00</div>
+                                <div className="text-[10px] text-slate-500">0.00 {t.symbol}</div>
+                            </div>
+                        </div>
+                    ))}
                  </div>
-                 <div>
-                   <div className="flex items-center gap-2">
-                     <h3 className="text-sm font-black text-white">{t.name}</h3>
-                     <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                       <span className="text-[8px] font-black text-indigo-300 uppercase tracking-tight">Score</span>
-                       <span className="text-[9px] font-black text-indigo-400">{t.socialScore}</span>
-                     </div>
-                   </div>
-                   <span className="text-[11px] font-mono text-slate-500 uppercase">{t.symbol}</span>
-                 </div>
-               </div>
-               <div className="text-right">
-                 <p className="text-base font-black text-white font-mono">${(t.price * 1250).toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
-                 <span className={`text-[10px] font-black ${t.change24h > 0 ? 'text-green-400' : 'text-red-400'}`}>{t.change24h > 0 ? '+' : ''}{t.change24h}%</span>
-               </div>
              </div>
-           ))}
-        </div>
+         </div>
       )}
 
       {activeTab === 'earn' && (

@@ -1,5 +1,5 @@
 {
-  "name": "BSORTAB - Social Trading Terminal",
+  "name": "BASELINES - Social Trading Terminal",
   "description": "A comprehensive Social Trading Terminal for Base Chain featuring XP Engine, Smart Swap Router, and AI-driven Social Alpha Feed.",
   "requestFramePermissions": [
     "geolocation"

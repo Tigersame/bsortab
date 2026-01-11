@@ -1,10 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Identity, Avatar, Name, Address } from '@coinbase/onchainkit/identity';
 import { MOCK_LEADERBOARD } from '../constants';
 
-const Leaderboard: React.FC = () => {
+interface LeaderboardProps {
+    onInteraction: (action: string) => void;
+}
+
+const Leaderboard: React.FC<LeaderboardProps> = ({ onInteraction }) => {
   const [sortBy, setSortBy] = useState<'xp' | 'reputation'>('xp');
+
+  useEffect(() => {
+      onInteraction('CHECK_LEADERBOARD');
+  }, []);
 
   const sortedUsers = [...MOCK_LEADERBOARD].sort((a, b) => b[sortBy] - a[sortBy]);
 
@@ -21,7 +29,7 @@ const Leaderboard: React.FC = () => {
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="text-center space-y-2 py-4">
         <h2 className="text-2xl font-black tracking-tighter text-white uppercase italic">Global Rankings</h2>
-        <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase">The elite of BSORTAB Social OS</p>
+        <p className="text-[10px] text-slate-500 font-black tracking-widest uppercase">The elite of BASELINES Social OS</p>
       </div>
 
       {/* Sort Toggle */}

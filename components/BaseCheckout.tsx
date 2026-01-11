@@ -12,8 +12,8 @@ const BaseCheckout: React.FC = () => {
   // Initialize Base Account SDK
   // Ideally initialized once at app level, but following the quickstart pattern here for isolation
   const sdk = useMemo(() => createBaseAccountSDK({
-    appName: 'BSORTAB Social OS',
-    appLogoUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=BSORTAB',
+    appName: 'BASELINES Social OS',
+    appLogoUrl: 'https://api.dicebear.com/7.x/identicon/svg?seed=BASELINES',
   }), []);
 
   const handleSignIn = async () => {

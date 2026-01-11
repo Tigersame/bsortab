@@ -30,6 +30,13 @@ export interface Trade {
   reputationScore: number;
 }
 
+export interface XpEntry {
+  id: string;
+  action: string;
+  amount: number;
+  timestamp: number;
+}
+
 export interface UserProfile {
   address: string;
   fid?: number;
@@ -45,9 +52,11 @@ export interface UserProfile {
   totalVolume: number;
   pnlNet: number;
   lastGm?: number;
+  notificationsEnabled?: boolean;
+  xpHistory: XpEntry[];
 }
 
-export type ViewState = 'feed' | 'terminal' | 'profile' | 'leaderboard' | 'checkout' | 'launcher';
+export type ViewState = 'feed' | 'terminal' | 'profile' | 'leaderboard' | 'checkout' | 'launcher' | 'quests';
 
 export interface PortfolioHistory {
   timestamp: string;
