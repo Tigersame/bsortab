@@ -1,0 +1,185 @@
+import React, { useState, useMemo } from 'react';
+import { useAccount } from 'wagmi';
+import { parseUnits } from 'viem';
+import { base } from 'wagmi/chains';
+import { 
+  useMorphoVault, 
+  useBuildDepositToMorphoTx, 
+  useBuildWithdrawFromMorphoTx 
+} from '@coinbase/onchainkit/earn';
+import { 
+  Transaction, 
+  TransactionButton, 
+  TransactionStatus, 
+  TransactionStatusLabel, 
+  TransactionStatusAction 
+} from '@coinbase/onchainkit/transaction';
+
+// Base USDC Morpho Vault - Reliable and secure yield on Base
+const VAULT_ADDRESS = '0x4694485dadc0603746614df2043d85a0e2763ad6';
+
+interface EarnVaultProps {
+  onSuccess: () => void;
+}
+
+const EarnVault: React.FC<EarnVaultProps> = ({ onSuccess }) => {
+  const { address } = useAccount();
+  const [amount, setAmount] = useState('');
+  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit');
+
+  // Fetch real vault data using OnchainKit
+  const {
+    totalApy,
+    nativeApy,
+    rewards,
+    balance,
+    asset,
+    status: vaultStatus
+  } = useMorphoVault({
+    vaultAddress: VAULT_ADDRESS,
+    recipientAddress: address,
+  });
+
+  const parsedAmount = useMemo(() => {
+    if (!amount || !asset?.decimals) return '0';
+    try {
+      return parseUnits(amount, asset.decimals).toString();
+    } catch {
+      return '0';
+    }
+  }, [amount, asset]);
+
+  // Build transactions using OnchainKit Earn hooks
+  const { calls: depositCalls } = useBuildDepositToMorphoTx({
+    vaultAddress: VAULT_ADDRESS,
+    recipientAddress: address,
+    amount: parsedAmount,
+  });
+
+  const { calls: withdrawCalls } = useBuildWithdrawFromMorphoTx({
+    vaultAddress: VAULT_ADDRESS,
+    recipientAddress: address,
+    amount: parsedAmount,
+    tokenDecimals: asset?.decimals,
+  });
+
+  const activeCalls = mode === 'deposit' ? depositCalls : withdrawCalls;
+
+  if (vaultStatus === 'pending') {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Syncing Vault Data...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      {/* Yield Performance Card */}
+      <div className="p-6 rounded-[2rem] bg-gradient-to-br from-blue-600 to-indigo-800 text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform text-white">
+          <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/></svg>
+        </div>
+        
+        <div className="relative z-10 space-y-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Net APY</span>
+              <h2 className="text-4xl font-black tracking-tighter">{(totalApy ? totalApy * 100 : 0).toFixed(2)}%</h2>
+            </div>
+            <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
+              Live Yield
+            </div>
+          </div>
+
+          <div className="flex gap-4 border-t border-white/10 pt-4">
+            <div>
+              <p className="text-[8px] font-black uppercase opacity-60">Native</p>
+              <p className="text-xs font-bold">{(nativeApy ? nativeApy * 100 : 0).toFixed(2)}%</p>
+            </div>
+            {rewards && rewards.length > 0 && rewards.map((r: any) => (
+              <div key={r.asset}>
+                <p className="text-[8px] font-black uppercase opacity-60">{r.assetName || 'Reward'}</p>
+                <p className="text-xs font-bold">{(r.apy * 100).toFixed(2)}%</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* User Balance Glance */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800">
+          <span className="text-[9px] font-black text-slate-500 uppercase block mb-1">Your Deposit</span>
+          <p className="text-lg font-black text-white font-mono">{balance ? Number(balance).toFixed(4) : '0.0000'} <span className="text-xs text-blue-400">{asset?.symbol || 'USDC'}</span></p>
+        </div>
+        <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800">
+          <span className="text-[9px] font-black text-slate-500 uppercase block mb-1">Vault Status</span>
+          <p className="text-lg font-black text-green-400 font-mono italic uppercase text-[10px] pt-1">Verified Protocol</p>
+        </div>
+      </div>
+
+      {/* Interaction Form */}
+      <div className="p-6 rounded-[2rem] bg-slate-900 border border-slate-800 space-y-6">
+        <div className="flex p-1 bg-slate-950 rounded-2xl border border-slate-800">
+          <button 
+            onClick={() => setMode('deposit')}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${mode === 'deposit' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}
+          >
+            Deposit
+          </button>
+          <button 
+            onClick={() => setMode('withdraw')}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${mode === 'withdraw' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500'}`}
+          >
+            Withdraw
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-slate-500 uppercase px-2">Amount to {mode}</label>
+          <div className="relative">
+            <input 
+              type="number" 
+              placeholder="0.00"
+              className="w-full p-5 rounded-2xl bg-slate-950 border border-slate-800 text-white font-mono outline-none focus:border-blue-500 transition-colors"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex gap-2">
+              <button onClick={() => setAmount(balance || '0')} className="text-[10px] font-black text-blue-500 hover:text-blue-400 uppercase transition-colors">Max</button>
+            </div>
+          </div>
+        </div>
+
+        <Transaction 
+          calls={activeCalls}
+          chainId={base.id}
+          className="w-full"
+          onStatus={(s) => {
+            if (s.statusName === 'success') {
+              onSuccess();
+              setAmount('');
+            }
+          }}
+        >
+          <TransactionButton 
+            className="!w-full !py-5 !bg-blue-600 !text-white !rounded-3xl !font-black !text-sm !uppercase !tracking-widest !transition-all !shadow-2xl !active:scale-95 disabled:!opacity-50 hover:!bg-blue-500" 
+            text={mode === 'deposit' ? `Confirm Deposit (+75 XP)` : `Confirm Withdrawal`}
+          />
+          <TransactionStatus className="mt-4">
+            <TransactionStatusLabel className="!text-slate-400 !text-[10px] !font-bold" />
+            <TransactionStatusAction className="!text-blue-400 !text-[10px] !font-black !uppercase" />
+          </TransactionStatus>
+        </Transaction>
+      </div>
+
+      <p className="text-[9px] text-center text-slate-600 font-mono uppercase px-8">
+        Deposits are supplied to the Morpho Blue protocol on Base. Yield is variable and accrues per block. Use BSORTAB for maximum efficiency.
+      </p>
+    </div>
+  );
+};
+
+export default EarnVault;
