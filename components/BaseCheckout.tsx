@@ -74,7 +74,7 @@ const BaseCheckout: React.FC = () => {
                 <div className="w-full space-y-3">
                     <div className="flex justify-center">
                          <SignInWithBaseButton 
-                             variant="secondary" 
+                             variant="solid" 
                              onClick={handleSignIn}
                          />
                     </div>
