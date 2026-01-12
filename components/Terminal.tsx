@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
@@ -17,7 +16,7 @@ import {
 import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
 import { Avatar, Name } from '@coinbase/onchainkit/identity';
 import type { Token } from '@coinbase/onchainkit/token';
-import { BASE_TOKENS, EMPTY_USER } from '../constants';
+import { BASE_TOKENS } from '../constants';
 import EarnVault from './EarnVault';
 
 interface TerminalProps {
@@ -108,7 +107,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
             </div>
 
             {/* OnchainKit Swap Portal - Conditional Render */}
-            <div className="w-full max-w-[420px]">
+            <div className="w-full max-w-[420px] relative">
                 {isConnected && address ? (
                     <Swap 
                         isSponsored={true}
@@ -118,40 +117,47 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                                setSelectedChart(status.statusData.tokenFrom.symbol);
                            }
                         }}
-                        className="!bg-transparent"
+                        className="w-full"
                     >
-                        <SwapSettings>
-                            <SwapSettingsSlippageTitle className="!text-slate-300 !font-bold">Max. Slippage</SwapSettingsSlippageTitle>
-                            <SwapSettingsSlippageDescription className="!text-slate-500">
-                                Your swap will revert if the prices change by more than the selected percentage.
-                            </SwapSettingsSlippageDescription>
-                            <SwapSettingsSlippageInput className="!bg-[#0e1627] !border-slate-800 !text-white" />
-                        </SwapSettings>
+                        <div className="flex justify-between items-center mb-2 px-1">
+                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Swap Tokens</div>
+                             <SwapSettings>
+                                <SwapSettingsSlippageTitle className="text-slate-300 font-bold">Max. Slippage</SwapSettingsSlippageTitle>
+                                <SwapSettingsSlippageDescription className="text-slate-500">
+                                    Your swap will revert if the prices change by more than the selected percentage.
+                                </SwapSettingsSlippageDescription>
+                                <SwapSettingsSlippageInput className="bg-[#0e1627] border-slate-800 text-white" />
+                            </SwapSettings>
+                        </div>
                         
-                        <SwapAmountInput 
-                            label="Sell"
-                            swappableTokens={swappableTokens}
-                            token={defaultFromToken}
-                            type="from"
-                            className="!bg-[#0e1627] !border-transparent !rounded-[20px] !p-4"
-                        />
+                        <div className="relative flex flex-col gap-1">
+                            <SwapAmountInput 
+                                label="Sell"
+                                swappableTokens={swappableTokens}
+                                token={defaultFromToken}
+                                type="from"
+                                className="bg-[#0e1627] border-none rounded-t-[20px] rounded-b-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
+                            />
+                            
+                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                                <SwapToggleButton className="w-10 h-10 rounded-full border-[4px] border-[#0b1220] bg-[#1e293b] p-2 text-blue-400 hover:bg-[#334155] shadow-lg transition-all active:scale-95 flex items-center justify-center" />
+                            </div>
+                            
+                            <SwapAmountInput 
+                                label="Buy"
+                                swappableTokens={swappableTokens}
+                                token={defaultToToken}
+                                type="to"
+                                className="bg-[#0e1627] border-none rounded-b-[20px] rounded-t-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
+                            />
+                        </div>
                         
-                        <SwapToggleButton className="!border-[#0b1220] !bg-[#1e293b] !text-blue-400" />
-                        
-                        <SwapAmountInput 
-                            label="Buy"
-                            swappableTokens={swappableTokens}
-                            token={defaultToToken}
-                            type="to"
-                            className="!bg-[#0e1627] !border-transparent !rounded-[20px] !p-4"
-                        />
-                        
-                        <div className="pt-2">
-                            <SwapButton className="!w-full !py-4 !bg-blue-600 !rounded-[16px] !font-black !uppercase !tracking-widest !text-sm hover:!bg-blue-500 !shadow-lg !shadow-blue-500/20" />
+                        <div className="pt-4">
+                            <SwapButton className="w-full py-4 bg-blue-600 rounded-[16px] font-black uppercase tracking-widest text-sm hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all" />
                         </div>
 
-                        <SwapMessage className="!text-[10px] !font-bold !text-slate-400 !mt-2" />
-                        <SwapToast className="!z-[100]" />
+                        <SwapMessage className="text-[10px] font-bold text-slate-400 mt-2 text-center" />
+                        <SwapToast className="z-[100]" />
                     </Swap>
                 ) : (
                     <div className="p-8 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-center space-y-6 shadow-2xl animate-in fade-in">
