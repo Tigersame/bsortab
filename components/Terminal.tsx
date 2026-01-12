@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAccount } from 'wagmi';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
   Swap, 
   SwapAmountInput, 
@@ -42,11 +42,8 @@ const TimeframeSelector = ({ active, onChange }: { active: string, onChange: (tf
 );
 
 const MarketStats = ({ symbol }: { symbol: string }) => {
-    // Mock data based on symbol hash to look consistent but static for demo
-    const hash = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const vol = (hash * 123456).toLocaleString();
-    const cap = (hash * 9876543).toLocaleString();
-    const holders = (hash * 12).toLocaleString();
+    // Mock data generation consistent with symbol
+    const hash = useMemo(() => symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0), [symbol]);
     
     return (
         <div className="grid grid-cols-4 gap-2 py-3 px-1 border-t border-b border-slate-800/50 mb-4">
@@ -60,10 +57,10 @@ const MarketStats = ({ symbol }: { symbol: string }) => {
             </div>
              <div className="text-center">
                 <p className="text-[8px] text-slate-500 uppercase tracking-widest mb-0.5">Holders</p>
-                <p className="text-[10px] font-mono font-bold text-slate-300">{holders}</p>
+                <p className="text-[10px] font-mono font-bold text-slate-300">{(hash * 12).toLocaleString()}</p>
             </div>
             <div className="text-center">
-                <p className="text-[8px] text-slate-500 uppercase tracking-widest mb-0.5">fdv</p>
+                <p className="text-[8px] text-slate-500 uppercase tracking-widest mb-0.5">FDV</p>
                 <p className="text-[10px] font-mono font-bold text-slate-300">${(hash / 8).toFixed(1)}M</p>
             </div>
         </div>
@@ -95,14 +92,12 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
   const defaultToToken = swappableTokens.find(t => t.symbol === 'USDC');
 
   useEffect(() => {
-    // Advanced Generative visual pattern for "Live" feel based on timeframe
     const data = [];
     const now = Date.now();
     let price = selectedChart === 'ETH' ? 3200 : selectedChart === 'BTC' ? 64000 : 100;
     
-    // Adjust volatility based on timeframe
     let points = 24;
-    let interval = 3600000; // 1H default
+    let interval = 3600000;
     let volatility = 0.02;
 
     switch(timeframe) {
@@ -113,10 +108,9 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
         case '1Y': points = 12; interval = 2592000000; volatility = 0.20; break;
     }
     
-    // Generate randomized but continuous candle-like line data
     for (let i = points; i >= 0; i--) {
       const change = 1 + (Math.random() - 0.5) * volatility;
-      price = price * change;
+      price = Math.max(0.01, price * change); // Prevent negative prices
       data.push({
         time: new Date(now - i * interval).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         value: price
@@ -128,7 +122,11 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
   const latestValue = chartData.length > 0 ? chartData[chartData.length - 1].value : 0;
   const startValue = chartData.length > 0 ? chartData[0].value : 1;
   const isPositive = latestValue >= startValue;
-  const percentChange = ((latestValue - startValue) / startValue) * 100;
+  const percentChange = startValue > 0 ? ((latestValue - startValue) / startValue) * 100 : 0;
+
+  if (!defaultFromToken || !defaultToToken) {
+      return <div className="p-8 text-center text-slate-500 text-xs font-mono animate-pulse">Loading Asset Data...</div>;
+  }
 
   return (
     <div className="p-4 space-y-4 pb-32 relative h-full">
@@ -142,9 +140,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
       {activeTab === 'trade' && (
         <div className="flex flex-col items-center space-y-4 animate-in fade-in duration-300">
             {!isConnected ? (
-                 /* Not Connected - Hero State */
                  <div className="w-full relative min-h-[450px] flex flex-col items-center justify-center rounded-[2.5rem] bg-[#0b1220] border border-white/5 overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 mt-4">
-                       {/* Background Chart Animation */}
                        <div className="absolute inset-0 opacity-20 blur-[3px] pointer-events-none">
                            <ResponsiveContainer width="100%" height="100%">
                                <AreaChart data={chartData}>
@@ -153,7 +149,6 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                            </ResponsiveContainer>
                        </div>
                        
-                       {/* Lock Content */}
                        <div className="relative z-10 p-8 text-center space-y-6 max-w-[280px] mx-auto">
                             <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-2 border border-blue-500/20 shadow-[0_0_40px_rgba(37,99,235,0.2)]">
                                     <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
@@ -172,9 +167,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                        </div>
                  </div>
             ) : (
-                /* Connected - Professional Interface */
                 <>
-                    {/* Market Header */}
                     <div className="w-full flex justify-between items-end px-2">
                          <div>
                             <div className="flex items-center gap-2">
@@ -191,7 +184,6 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                          </div>
                     </div>
 
-                    {/* Chart Container */}
                     <div className="w-full bg-[#0b1220] rounded-[1.5rem] overflow-hidden relative border border-white/5 shadow-lg animate-in fade-in pb-2">
                         <div className="p-4 pb-0">
                             <TimeframeSelector active={timeframe} onChange={setTimeframe} />
@@ -222,19 +214,18 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                             </ResponsiveContainer>
                         </div>
                         
-                        {/* Market Stats Bar */}
                         <div className="px-4">
                             <MarketStats symbol={selectedChart} />
                         </div>
                     </div>
 
-                    {/* Swap Interface */}
                     <div className="w-full relative animate-in slide-in-from-bottom-2 bg-slate-900/30 rounded-[2rem] border border-white/5 p-1">
                         <Swap 
                             isSponsored={true}
                             onSuccess={onSwap}
                             onStatus={(status) => {
-                               if (status.statusName === 'amountChange' && status.statusData.tokenFrom) {
+                               // Safeguard against undefined statusData
+                               if (status.statusName === 'amountChange' && status.statusData && status.statusData.tokenFrom) {
                                    setSelectedChart(status.statusData.tokenFrom.symbol);
                                }
                             }}
@@ -248,7 +239,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                                  <SwapSettings>
                                     <SwapSettingsSlippageTitle className="text-white font-bold mb-2">Max. Slippage</SwapSettingsSlippageTitle>
                                     <SwapSettingsSlippageDescription className="text-slate-400 mb-4 text-xs">
-                                        Your swap will revert if the prices change by more than the selected percentage.
+                                        Revert if price changes by more than %
                                     </SwapSettingsSlippageDescription>
                                     <SwapSettingsSlippageInput className="bg-[#0e1627] border border-slate-700 text-white rounded-xl p-2 outline-none focus:border-blue-500" />
                                 </SwapSettings>
@@ -296,7 +287,6 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
              <div className="w-full p-4 rounded-[24px] bg-[#0b1220] border border-white/5">
                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Your Assets</h3>
                  <div className="space-y-3">
-                    {/* Render Asset List with Social Scores */}
                     {BASE_TOKENS.map((token) => (
                         <div key={token.symbol} className="flex items-center justify-between p-3 rounded-2xl bg-[#0e1627] border border-slate-800/50 hover:border-slate-700 transition-colors">
                             <div className="flex items-center gap-3">
@@ -306,7 +296,6 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-black text-white">{token.symbol}</span>
-                                        {/* Enhanced Social Score Display */}
                                         <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${token.socialScore >= 90 ? 'bg-green-500/10 border-green-500/20 text-green-400' : token.socialScore >= 70 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`} title="Social Score">
                                             <span className="text-[10px]">🔥</span>
                                             <span className="text-[9px] font-black tracking-wide">{token.socialScore}</span>
