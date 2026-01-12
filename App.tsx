@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, type FC } from 'react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
@@ -18,7 +18,7 @@ import Onboarding from './components/Onboarding';
 import { ViewState, UserProfile } from './types';
 import { EMPTY_USER, XP_REWARDS } from './constants';
 
-const App: React.FC = () => {
+const App: FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('feed');
   const [user, setUser] = useState<UserProfile>(EMPTY_USER);
   const [isReady, setIsReady] = useState(false);

@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+"use client";
+
+import { useState, useEffect, useRef, useCallback, type FC, type MouseEvent } from 'react';
 import { BASE_TOKENS } from '../constants';
 import { Token } from '../types';
 import { sdk } from "../farcasterSdk";
@@ -15,9 +17,9 @@ interface CreatorCardProps {
     isVisible: boolean;
     isSubscribed: boolean;
     isLoadingSub: boolean;
-    onOpenToken: (e: React.MouseEvent, address?: string) => void;
-    onOpenProfile: (e: React.MouseEvent, username: string) => void;
-    onSubscribe: (e: React.MouseEvent, symbol: string) => void;
+    onOpenToken: (e: MouseEvent, address?: string) => void;
+    onOpenProfile: (e: MouseEvent, username: string) => void;
+    onSubscribe: (e: MouseEvent, symbol: string) => void;
     onBuyAlpha: () => void;
     onShare: () => void;
 }
@@ -149,7 +151,7 @@ const CreatorCard = ({
     </div>
 )};
 
-const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
+const AlphaFeed: FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [subscribed, setSubscribed] = useState<Record<string, boolean>>({});
@@ -182,20 +184,20 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
     return () => observer.disconnect();
   }, []);
 
-  const handleOpenToken = useCallback((e: React.MouseEvent, address?: string) => {
+  const handleOpenToken = useCallback((e: MouseEvent, address?: string) => {
     e.stopPropagation();
     if (!address) return;
     sdk.actions.openUrl(`https://basescan.org/token/${address}`);
     onInteraction('OPEN_TOKEN_DETAILS');
   }, [onInteraction]);
 
-  const handleOpenProfile = useCallback((e: React.MouseEvent, username: string) => {
+  const handleOpenProfile = useCallback((e: MouseEvent, username: string) => {
     e.stopPropagation();
     const handle = username.replace('@', '');
     sdk.actions.openUrl(`https://warpcast.com/${handle}`);
   }, []);
 
-  const handleSubscribe = useCallback(async (e: React.MouseEvent, symbol: string) => {
+  const handleSubscribe = useCallback(async (e: MouseEvent, symbol: string) => {
     e.stopPropagation();
     if (subscribed[symbol] || loadingSub) return;
     

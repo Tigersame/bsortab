@@ -1,29 +1,160 @@
-import React, { useState, useEffect, useMemo } from 'react';
+"use client";
+
+import { useState, useEffect, useMemo, useCallback, type FC } from 'react';
+import { createPortal } from 'react-dom';
 import { useAccount } from 'wagmi';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { 
   Swap, 
   SwapAmountInput, 
-  SwapToggleButton, 
   SwapButton, 
   SwapMessage, 
   SwapToast, 
-  SwapSettings, 
-  SwapSettingsSlippageDescription, 
-  SwapSettingsSlippageInput, 
-  SwapSettingsSlippageTitle 
 } from '@coinbase/onchainkit/swap';
 import { Wallet, ConnectWallet } from '@coinbase/onchainkit/wallet';
 import type { Token } from '@coinbase/onchainkit/token';
 import { BASE_TOKENS } from '../constants';
 import EarnVault from './EarnVault';
 
+// --- Types ---
 interface TerminalProps {
   onSwap: () => void;
   onSharePnL: () => void;
   onEarnSuccess: () => void;
   onInteraction: (action: string) => void;
 }
+
+// --- Icons ---
+const ChevronDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 6L8 10L12 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const ArrowDownIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 4V20M12 20L18 14M12 20L6 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+);
+
+// --- Components ---
+
+const TokenChip = ({ token, onClick }: { token: Token; onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all pl-2 pr-3 py-1.5 rounded-full cursor-pointer select-none group border border-transparent hover:border-slate-600"
+  >
+    <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-950 border border-slate-700">
+        <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
+    </div>
+    <span className="text-sm font-bold text-white tracking-tight group-hover:text-blue-200">{token.symbol}</span>
+    <span className="text-slate-400 group-hover:text-white transition-colors">
+        <ChevronDownIcon />
+    </span>
+  </button>
+);
+
+const TokenSelectorModal = ({ 
+    isOpen, 
+    onClose, 
+    onSelect, 
+    tokens 
+}: { 
+    isOpen: boolean; 
+    onClose: () => void; 
+    onSelect: (token: Token) => void; 
+    tokens: Token[];
+}) => {
+    const [search, setSearch] = useState('');
+    
+    // Prevent scrolling on body when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const filtered = tokens.filter(t => 
+        t.name.toLowerCase().includes(search.toLowerCase()) || 
+        t.symbol.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center pointer-events-none">
+            {/* Backdrop */}
+            <div 
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200" 
+                onClick={onClose}
+            />
+            
+            {/* Modal Content */}
+            <div className="bg-slate-900 w-full sm:w-[400px] sm:rounded-3xl rounded-t-[2rem] border border-slate-800 shadow-2xl pointer-events-auto animate-in slide-in-from-bottom-10 duration-300 flex flex-col max-h-[85vh] sm:max-h-[600px] overflow-hidden">
+                {/* Header */}
+                <div className="p-5 border-b border-slate-800/50 space-y-4 shrink-0">
+                    <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto sm:hidden opacity-50 mb-2" />
+                    <h3 className="text-lg font-black text-white text-center">Select Token</h3>
+                    
+                    {/* Search Input */}
+                    <div className="relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                            <SearchIcon />
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Search name or address"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-white placeholder:text-slate-600 outline-none focus:border-blue-500 transition-all"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+
+                {/* Token List */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain pb-[env(safe-area-inset-bottom,2rem)]">
+                    {filtered.map((token) => (
+                        <button
+                            key={token.symbol}
+                            onClick={() => { onSelect(token); onClose(); }}
+                            className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-800 active:bg-slate-800/80 transition-all group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 overflow-hidden relative">
+                                    <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="text-sm font-black text-white group-hover:text-blue-400 transition-colors">{token.name}</div>
+                                    <div className="text-xs font-mono font-bold text-slate-500">{token.symbol}</div>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs font-mono text-slate-400">0.00</div>
+                            </div>
+                        </button>
+                    ))}
+                    {filtered.length === 0 && (
+                        <div className="p-8 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">
+                            No tokens found
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 
 const TimeframeSelector = ({ active, onChange }: { active: string, onChange: (tf: any) => void }) => (
   <div className="flex bg-[#1e293b] p-0.5 rounded-xl border border-slate-800/50 mb-2">
@@ -42,9 +173,7 @@ const TimeframeSelector = ({ active, onChange }: { active: string, onChange: (tf
 );
 
 const MarketStats = ({ symbol }: { symbol: string }) => {
-    // Mock data generation consistent with symbol
     const hash = useMemo(() => symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0), [symbol]);
-    
     return (
         <div className="grid grid-cols-4 gap-2 py-4 px-2 border-t border-slate-800/50">
             <div className="text-center">
@@ -67,30 +196,37 @@ const MarketStats = ({ symbol }: { symbol: string }) => {
     )
 }
 
-const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, onInteraction }) => {
+const Terminal: FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, onInteraction }) => {
   const { isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState<'trade' | 'portfolio' | 'earn'>('trade');
   
-  // Chart & Market State
+  // Data State
   const [chartData, setChartData] = useState<any[]>([]);
   const [selectedChart, setSelectedChart] = useState<string>('ETH');
   const [timeframe, setTimeframe] = useState<'1H' | '1D' | '1W' | '1M' | '1Y'>('1D');
   
-  // Map App Tokens to OnchainKit Tokens for Base Mainnet
-  const swappableTokens: Token[] = useMemo(() => {
-    return BASE_TOKENS.map((t) => ({
+  // Token State
+  const swappableTokens: Token[] = useMemo(() => BASE_TOKENS.map((t) => ({
       name: t.name,
       symbol: t.symbol,
       decimals: t.decimals || 18,
       image: t.logoUrl || '',
       chainId: 8453,
       address: (t.address || '') as "" | `0x${string}`, 
-    }));
-  }, []);
+  })), []);
 
-  const defaultFromToken = swappableTokens.find(t => t.symbol === 'ETH') || swappableTokens[0];
-  const defaultToToken = swappableTokens.find(t => t.symbol === 'USDC') || swappableTokens[1];
+  const [fromToken, setFromToken] = useState<Token>(swappableTokens.find(t => t.symbol === 'ETH') || swappableTokens[0]);
+  const [toToken, setToToken] = useState<Token>(swappableTokens.find(t => t.symbol === 'USDC') || swappableTokens[1]);
+  
+  // Modal State
+  const [modalType, setModalType] = useState<'from' | 'to' | null>(null);
 
+  // Sync chart with From Token
+  useEffect(() => {
+    setSelectedChart(fromToken.symbol);
+  }, [fromToken]);
+
+  // Chart Data Simulation
   useEffect(() => {
     const data = [];
     const now = Date.now();
@@ -110,7 +246,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
     
     for (let i = points; i >= 0; i--) {
       const change = 1 + (Math.random() - 0.5) * volatility;
-      price = Math.max(0.01, price * change); // Prevent negative prices
+      price = Math.max(0.01, price * change); 
       data.push({
         time: new Date(now - i * interval).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         value: price
@@ -124,12 +260,28 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
   const isPositive = latestValue >= startValue;
   const percentChange = startValue > 0 ? ((latestValue - startValue) / startValue) * 100 : 0;
 
-  if (!defaultFromToken || !defaultToToken) {
-      return <div className="p-8 text-center text-slate-500 text-xs font-mono animate-pulse">Loading Asset Data...</div>;
-  }
+  const handleManualSwap = useCallback(() => {
+      const temp = fromToken;
+      setFromToken(toToken);
+      setToToken(temp);
+  }, [fromToken, toToken]);
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
+      {/* Modals */}
+      <TokenSelectorModal 
+        isOpen={modalType === 'from'}
+        onClose={() => setModalType(null)}
+        onSelect={(token) => { setFromToken(token); }}
+        tokens={swappableTokens}
+      />
+      <TokenSelectorModal 
+        isOpen={modalType === 'to'}
+        onClose={() => setModalType(null)}
+        onSelect={(token) => { setToToken(token); }}
+        tokens={swappableTokens}
+      />
+
       {/* Fixed Header Tabs */}
       <div className="px-4 pt-4 pb-2 bg-[#020617] sticky top-0 z-30">
         <div className="flex bg-[#0f172a] p-1 rounded-2xl border border-slate-800">
@@ -222,56 +374,70 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                     </div>
 
                     {/* Swap Module */}
-                    <div className="w-full relative bg-[#0b1220] rounded-[2rem] border border-slate-800 p-4 shadow-2xl">
+                    <div className="w-full relative">
                         <Swap 
                             isSponsored={true}
                             onSuccess={onSwap}
-                            onStatus={(status) => {
-                               if (status.statusName === 'amountChange' && status.statusData && status.statusData.tokenFrom) {
-                                   setSelectedChart(status.statusData.tokenFrom.symbol);
-                               }
-                            }}
-                            className="w-full"
+                            className="w-full space-y-3"
                         >
-                            <div className="flex justify-between items-center mb-4 px-1">
-                                 <h2 className="text-sm font-bold text-white">Swap</h2>
-                                 <SwapSettings>
-                                    <div className="p-4 min-w-[240px] bg-[#1e293b] rounded-xl border border-slate-700 shadow-2xl z-50">
-                                        <SwapSettingsSlippageTitle className="text-white font-bold mb-2 text-sm">Max Slippage</SwapSettingsSlippageTitle>
-                                        <SwapSettingsSlippageDescription className="text-slate-400 mb-4 text-xs">
-                                            Your transaction will revert if the price changes by more than this percentage.
-                                        </SwapSettingsSlippageDescription>
-                                        <SwapSettingsSlippageInput className="w-full bg-[#0f172a] border border-slate-600 text-white rounded-lg p-3 text-sm outline-none focus:border-[#0052FF] font-mono" />
-                                    </div>
-                                </SwapSettings>
+                            <div className="flex justify-between items-center px-1">
+                                 <h2 className="text-sm font-black text-white uppercase tracking-wider">Flash Swap</h2>
                             </div>
                             
-                            <div className="flex flex-col gap-2 relative">
-                                <SwapAmountInput 
-                                    label="Sell"
-                                    swappableTokens={swappableTokens}
-                                    token={defaultFromToken}
-                                    type="from"
-                                    delay={0}
-                                    className="bg-[#1e293b] border-none rounded-2xl p-4 transition-colors hover:bg-[#253248]"
-                                />
-                                
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                                    <SwapToggleButton className="w-10 h-10 rounded-xl border-4 border-[#0b1220] bg-[#1e293b] text-white hover:bg-[#253248] transition-all flex items-center justify-center shadow-lg" />
+                            <div className="flex flex-col relative gap-1">
+                                {/* Sell Input */}
+                                <div className="bg-slate-900 rounded-[2rem] p-5 border border-slate-800 transition-colors hover:border-slate-700 relative z-10">
+                                    <div className="flex justify-between mb-3">
+                                        <span className="text-xs font-bold text-slate-500">Sell</span>
+                                    </div>
+                                    <div className="flex justify-between items-center gap-4">
+                                        <div className="flex-1">
+                                            {/* Hide OCK Token Button via CSS className hack */}
+                                            <SwapAmountInput 
+                                                label=""
+                                                token={fromToken}
+                                                type="from"
+                                                className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
+                                            />
+                                        </div>
+                                        <TokenChip token={fromToken} onClick={() => setModalType('from')} />
+                                    </div>
+                                </div>
+
+                                {/* Floating Swap Action */}
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                                    <button 
+                                        onClick={handleManualSwap}
+                                        className="w-12 h-12 bg-[#020617] rounded-xl border-4 border-[#020617] text-slate-400 hover:text-white hover:bg-slate-900 transition-all flex items-center justify-center shadow-xl active:scale-95 group"
+                                    >
+                                        <div className="group-hover:rotate-180 transition-transform duration-500">
+                                            <ArrowDownIcon />
+                                        </div>
+                                    </button>
                                 </div>
                                 
-                                <SwapAmountInput 
-                                    label="Buy"
-                                    swappableTokens={swappableTokens}
-                                    token={defaultToToken}
-                                    type="to"
-                                    delay={0}
-                                    className="bg-[#1e293b] border-none rounded-2xl p-4 transition-colors hover:bg-[#253248]"
-                                />
+                                {/* Buy Input */}
+                                <div className="bg-slate-900 rounded-[2rem] p-5 border border-slate-800 transition-colors hover:border-slate-700 relative z-10 pt-8">
+                                    <div className="flex justify-between mb-3">
+                                        <span className="text-xs font-bold text-slate-500">Buy</span>
+                                    </div>
+                                    <div className="flex justify-between items-center gap-4">
+                                        <div className="flex-1">
+                                            {/* Hide OCK Token Button via CSS className hack */}
+                                            <SwapAmountInput 
+                                                label=""
+                                                token={toToken}
+                                                type="to"
+                                                className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
+                                            />
+                                        </div>
+                                        <TokenChip token={toToken} onClick={() => setModalType('to')} />
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div className="pt-4">
-                                <SwapButton className="w-full py-4 bg-[#0052FF] hover:bg-[#0040DD] text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]" />
+                            <div className="pt-2">
+                                <SwapButton className="w-full !py-5 !bg-[#0052FF] hover:!bg-[#0040DD] !text-white !rounded-[1.5rem] !font-black !text-base !uppercase !tracking-widest !shadow-lg !shadow-blue-600/20 active:!scale-[0.98] transition-all" />
                             </div>
 
                             <div className="mt-4">

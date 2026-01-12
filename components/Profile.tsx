@@ -1,5 +1,6 @@
+"use client";
 
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import { Identity, Avatar, Name } from '@coinbase/onchainkit/identity';
 import { UserProfile } from '../types';
 import { XP_REWARDS } from '../constants';
@@ -15,12 +16,17 @@ interface ProfileProps {
   onInteraction: (action: string) => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ user, onClaim, onGm, onShare, isAuthenticated, onSignIn, onEnableNotifications, onInteraction }) => {
+const Profile: FC<ProfileProps> = ({ user, onClaim, onGm, onShare, isAuthenticated, onSignIn, onEnableNotifications, onInteraction }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
   const [claiming, setClaiming] = useState(false);
   
   const levelProgress = ((user.xp % 500) / 500) * 100;
   const nextLevelXp = (Math.floor(user.xp / 500) + 1) * 500;
+
+  // Use a fallback zero address to prevent Avatar crash if user is not connected
+  const validAddress = (user.address && user.address.startsWith('0x')) 
+    ? user.address as `0x${string}` 
+    : '0x0000000000000000000000000000000000000000';
 
   const handleClaim = () => {
     if (user.pendingXp === 0) return;
@@ -56,7 +62,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onClaim, onGm, onShare, isAuthe
            <svg className="w-40 h-40" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z"></path></svg>
         </div>
         <div className="relative z-10 space-y-8">
-           <Identity address={user.address as `0x${string}`} className="!flex-row !gap-6">
+           <Identity address={validAddress} className="!flex-row !gap-6">
              <Avatar className="!w-24 !h-24 !rounded-[2.5rem] !border-4 !border-white/30 !p-1 !bg-slate-950/20 !backdrop-blur-xl shadow-2xl" />
              <div className="flex flex-col justify-center">
                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Base Identity</span>

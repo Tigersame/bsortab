@@ -1,5 +1,6 @@
+"use client";
 
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import { UserProfile, ViewState } from '../types';
 import { XP_REWARDS } from '../constants';
 
@@ -10,7 +11,7 @@ interface QuestsProps {
   onClaim: () => void;
 }
 
-const Quests: React.FC<QuestsProps> = ({ user, onInteraction, onNavigate, onClaim }) => {
+const Quests: FC<QuestsProps> = ({ user, onInteraction, onNavigate, onClaim }) => {
   const [claiming, setClaiming] = useState(false);
 
   const handleClaim = () => {

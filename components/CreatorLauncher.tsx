@@ -1,5 +1,6 @@
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { useAccount } from 'wagmi';
 import { generateTokenMetadata } from '../geminiService';
 import { sdk } from "../farcasterSdk";
@@ -20,7 +21,7 @@ interface Recipient {
   type: RewardType;
 }
 
-const CreatorLauncher: React.FC<CreatorLauncherProps> = ({ onLaunch, onInteraction, isAuthenticated }) => {
+const CreatorLauncher: FC<CreatorLauncherProps> = ({ onLaunch, onInteraction, isAuthenticated }) => {
   const { address } = useAccount();
   const [idea, setIdea] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
