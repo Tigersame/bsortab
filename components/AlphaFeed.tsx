@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BASE_TOKENS } from '../constants';
 import { Token } from '../types';
 import { sdk } from "../farcasterSdk";
@@ -13,6 +12,7 @@ interface AlphaFeedProps {
 interface CreatorCardProps {
     token: Token;
     isActive: boolean;
+    isVisible: boolean;
     isSubscribed: boolean;
     isLoadingSub: boolean;
     onOpenToken: (e: React.MouseEvent, address?: string) => void;
@@ -22,9 +22,10 @@ interface CreatorCardProps {
     onShare: () => void;
 }
 
-const CreatorCard: React.FC<CreatorCardProps> = ({ 
+const CreatorCard = ({ 
     token, 
-    isActive, 
+    isActive,
+    isVisible, 
     isSubscribed, 
     isLoadingSub, 
     onOpenToken, 
@@ -32,13 +33,26 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
     onSubscribe, 
     onBuyAlpha, 
     onShare 
-}) => (
-    <div className="h-full w-full snap-center relative flex flex-col justify-between overflow-hidden bg-slate-950 flex-shrink-0">
+}: CreatorCardProps) => {
+    
+    if (!isVisible) {
+        return (
+            <div className="h-full w-full relative flex items-center justify-center bg-slate-950">
+                <div className="flex flex-col items-center gap-2 opacity-50">
+                    <div className="w-12 h-12 rounded-full bg-slate-900 animate-pulse" />
+                    <div className="h-4 w-24 bg-slate-900 rounded animate-pulse" />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+    <div className="h-full w-full relative flex flex-col justify-between overflow-hidden bg-slate-950">
        {/* Immersive Background */}
        <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-slate-950/60 to-slate-950"></div>
           {/* Simulated abstract dynamic background based on token name */}
-          <div className={`w-full h-full opacity-30 bg-[url('https://api.dicebear.com/7.x/identicon/svg?seed=${token.symbol}&scale=200')] bg-cover bg-center blur-xl transition-transform duration-[10s] ease-linear ${isActive ? 'scale-110' : 'scale-100'}`}></div>
+          <div className={`w-full h-full opacity-30 bg-cover bg-center blur-xl transition-transform duration-[10s] ease-linear will-change-transform ${isActive ? 'scale-110' : 'scale-100'}`} style={{ backgroundImage: `url('https://api.dicebear.com/7.x/identicon/svg?seed=${token.symbol}&scale=200')` }}></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500/10 to-transparent opacity-50"></div>
        </div>
 
@@ -49,7 +63,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
             onClick={(e) => onOpenToken(e, token.address)}
           >
              <div className="w-10 h-10 rounded-full border-2 border-white/20 overflow-hidden bg-black shadow-lg group-hover:scale-105 transition-transform group-hover:border-blue-400">
-                <img src={token.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${token.symbol}`} className="w-full h-full object-cover" alt={token.name} />
+                <img loading="lazy" src={token.logoUrl || `https://api.dicebear.com/7.x/identicon/svg?seed=${token.symbol}`} className="w-full h-full object-cover" alt={token.name} />
              </div>
              <div>
                 <h3 className="text-white font-black text-sm drop-shadow-md flex items-center gap-1">
@@ -133,7 +147,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
           </div>
        </div>
     </div>
-);
+)};
 
 const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteraction }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -141,27 +155,47 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
   const [subscribed, setSubscribed] = useState<Record<string, boolean>>({});
   const [loadingSub, setLoadingSub] = useState<string | null>(null);
 
-  const handleScroll = () => {
-    if (containerRef.current) {
-      const index = Math.round(containerRef.current.scrollTop / containerRef.current.clientHeight);
-      setActiveIndex(index);
-    }
-  };
+  // IntersectionObserver for efficient active index tracking
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleOpenToken = (e: React.MouseEvent, address?: string) => {
+    const options = {
+      root: container,
+      threshold: 0.5, // 50% visibility required to be "active"
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute('data-idx'));
+            if (!isNaN(index)) {
+                setActiveIndex(index);
+            }
+        }
+      });
+    }, options);
+
+    const cards = container.querySelectorAll('[data-idx]');
+    cards.forEach(card => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleOpenToken = useCallback((e: React.MouseEvent, address?: string) => {
     e.stopPropagation();
     if (!address) return;
     sdk.actions.openUrl(`https://basescan.org/token/${address}`);
     onInteraction('OPEN_TOKEN_DETAILS');
-  };
+  }, [onInteraction]);
 
-  const handleOpenProfile = (e: React.MouseEvent, username: string) => {
+  const handleOpenProfile = useCallback((e: React.MouseEvent, username: string) => {
     e.stopPropagation();
     const handle = username.replace('@', '');
     sdk.actions.openUrl(`https://warpcast.com/${handle}`);
-  };
+  }, []);
 
-  const handleSubscribe = async (e: React.MouseEvent, symbol: string) => {
+  const handleSubscribe = useCallback(async (e: React.MouseEvent, symbol: string) => {
     e.stopPropagation();
     if (subscribed[symbol] || loadingSub) return;
     
@@ -177,29 +211,35 @@ const AlphaFeed: React.FC<AlphaFeedProps> = ({ onBuyAlpha, onShare, onInteractio
     } finally {
         setLoadingSub(null);
     }
-  };
+  }, [subscribed, loadingSub, onInteraction]);
 
   return (
     <div 
       ref={containerRef}
-      onScroll={handleScroll}
       className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar bg-black"
-      style={{ height: 'calc(100vh - 140px)' }} // Adjust for Layout header/footer
+      style={{ height: 'calc(100vh - 140px)' }}
     >
-       {BASE_TOKENS.map((token, index) => (
-          <CreatorCard 
-            key={token.symbol} 
-            token={token} 
-            isActive={index === activeIndex} 
-            isSubscribed={!!subscribed[token.symbol]}
-            isLoadingSub={loadingSub === token.symbol}
-            onOpenToken={handleOpenToken}
-            onOpenProfile={handleOpenProfile}
-            onSubscribe={handleSubscribe}
-            onBuyAlpha={onBuyAlpha}
-            onShare={onShare}
-          />
-       ))}
+       {BASE_TOKENS.map((token, index) => {
+          // Optimization: Only render content for cards near the viewport (Virtualization-lite)
+          const isVisible = Math.abs(activeIndex - index) <= 1;
+
+          return (
+            <div key={token.symbol} data-idx={index} className="h-full w-full snap-center flex-shrink-0">
+                <CreatorCard 
+                    token={token} 
+                    isActive={index === activeIndex} 
+                    isVisible={isVisible}
+                    isSubscribed={!!subscribed[token.symbol]}
+                    isLoadingSub={loadingSub === token.symbol}
+                    onOpenToken={handleOpenToken}
+                    onOpenProfile={handleOpenProfile}
+                    onSubscribe={handleSubscribe}
+                    onBuyAlpha={onBuyAlpha}
+                    onShare={onShare}
+                />
+            </div>
+          );
+       })}
        <div className="h-24 w-full snap-center flex items-center justify-center text-slate-600 font-mono text-xs">
           End of Feed
        </div>

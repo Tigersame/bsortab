@@ -4,7 +4,6 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Fix: Property 'cwd' does not exist on type 'Process'.
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
@@ -14,9 +13,13 @@ export default defineConfig(({ mode }) => {
         protocolImports: true,
       }),
     ],
+    build: {
+      rollupOptions: {
+        external: ['@google/genai'],
+      },
+    },
     define: {
       // Expose specific API keys safely
-      // Fix: Expose API_KEY as per Google GenAI SDK guidelines, fallback to GEMINI_API_KEY if present
       'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.ONCHAINKIT_API_KEY': JSON.stringify(env.ONCHAINKIT_API_KEY),
