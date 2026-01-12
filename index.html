@@ -17,12 +17,20 @@
     
     <style>
         :root {
-          --ock-bg-default: #0b1220;
+          /* OnchainKit Theme Variables */
+          --ock-bg-primary: #0b1220;
           --ock-bg-secondary: #0e1627;
+          --ock-bg-alternate: #1e293b;
+          
           --ock-text-primary: #f8fafc;
+          --ock-text-secondary: #94a3b8;
           --ock-text-inverse: #020617;
-          --ock-accent: #3b82f6;
+          
           --ock-border-radius: 1.5rem;
+          --ock-border-radius-inner: 1rem;
+          
+          --ock-accent: #3b82f6;
+          --ock-accent-foreground: #ffffff;
         }
         
         /* Mini App Critical Resets */
@@ -46,9 +54,17 @@
             overflow: hidden;
         }
         
-        /* Base Spec Input Height */
+        /* Base Spec Input Height & Reset */
         input {
             min-height: 44px; /* Touch target size */
+            background-color: transparent;
+            color: inherit;
+        }
+        
+        /* Force OCK Inputs to behave in dark mode */
+        input[type="text"], input[type="number"] {
+            background-color: transparent !important;
+            color: #f8fafc !important;
         }
 
         .font-mono { font-family: 'JetBrains Mono', monospace; }
@@ -74,22 +90,20 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "wagmi": "https://esm.sh/wagmi@^3.3.1",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "@coinbase/onchainkit/": "https://esm.sh/@coinbase/onchainkit@^1.1.2/",
-    "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.90.16",
-    "wagmi/": "https://esm.sh/wagmi@^3.3.1/",
-    "@coinbase/onchainkit": "https://esm.sh/@coinbase/onchainkit@^1.1.2",
-    "viem": "https://esm.sh/viem@^2.44.1",
-    "@base-org/account": "https://esm.sh/@base-org/account@^2.5.1",
-    "@base-org/account-ui/": "https://esm.sh/@base-org/account-ui@^1.0.1/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "vite-plugin-node-polyfills": "https://esm.sh/vite-plugin-node-polyfills@^0.24.0"
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "react/": "https://esm.sh/react@18.2.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^0.1.1",
+    "wagmi": "https://esm.sh/wagmi@^2.14.0",
+    "recharts": "https://esm.sh/recharts@^2.12.7",
+    "@coinbase/onchainkit/": "https://esm.sh/@coinbase/onchainkit@0.36.0/",
+    "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@^5.60.0",
+    "wagmi/": "https://esm.sh/wagmi@^2.14.0/",
+    "@coinbase/onchainkit": "https://esm.sh/@coinbase/onchainkit@0.36.0",
+    "viem": "https://esm.sh/viem@^2.23.0",
+    "vite": "https://esm.sh/vite@^5.4.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.2.1",
+    "vite-plugin-node-polyfills": "https://esm.sh/vite-plugin-node-polyfills@^0.22.0"
   }
 }
 </script>
