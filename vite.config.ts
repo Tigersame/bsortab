@@ -5,6 +5,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
+  const port = Number(process.env.PORT) || 8080;
 
   return {
     plugins: [
@@ -13,6 +14,15 @@ export default defineConfig(({ mode }) => {
         protocolImports: true,
       }),
     ],
+    server: {
+      host: true,
+      port: port,
+    },
+    preview: {
+      host: true,
+      port: port,
+      allowedHosts: true,
+    },
     build: {
       rollupOptions: {
         external: ['@google/genai'],
