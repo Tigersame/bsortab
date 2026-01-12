@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { WagmiProvider, createConfig, http } from 'wagmi';
