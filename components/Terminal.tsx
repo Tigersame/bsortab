@@ -79,16 +79,16 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
   return (
     <div className="p-4 space-y-4 pb-32 relative">
       {/* Navigation Tabs (Top) */}
-      <div className="flex bg-[#0b1220] p-1 rounded-2xl border border-slate-800/50 sticky top-0 z-20 shadow-md">
-        <button onClick={() => setActiveTab('trade')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'trade' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Trade</button>
-        <button onClick={() => setActiveTab('portfolio')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'portfolio' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Assets</button>
-        <button onClick={() => setActiveTab('earn')} className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeTab === 'earn' ? 'bg-[#1e40af] text-white shadow' : 'text-slate-500'}`}>Earn</button>
+      <div className="flex bg-[#0b1220] p-1 rounded-3xl border border-slate-800/50 sticky top-0 z-20 shadow-md">
+        <button onClick={() => setActiveTab('trade')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all ${activeTab === 'trade' ? 'bg-[#1e40af] text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Trade</button>
+        <button onClick={() => setActiveTab('portfolio')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all ${activeTab === 'portfolio' ? 'bg-[#1e40af] text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Assets</button>
+        <button onClick={() => setActiveTab('earn')} className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all ${activeTab === 'earn' ? 'bg-[#1e40af] text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Earn</button>
       </div>
 
       {activeTab === 'trade' && (
         <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-300">
             {/* Chart Preview - Always Visible for Context */}
-            <div className="w-full max-w-[420px] h-32 bg-[#0b1220] rounded-[20px] overflow-hidden relative border border-white/5 shadow-lg">
+            <div className={`w-full max-w-[420px] h-32 bg-[#0b1220] rounded-[24px] overflow-hidden relative border border-white/5 shadow-lg transition-opacity duration-500 ${!isConnected ? 'opacity-50 blur-[2px]' : 'opacity-100'}`}>
                 <div className="absolute top-3 left-4 z-10">
                     <h3 className="text-xl font-bold text-white tracking-tight">{selectedChart}</h3>
                     <span className={`text-xs font-bold ${isPositive ? 'text-green-400' : 'text-red-400'}`}>{percentChange > 0 ? '+' : ''}{percentChange.toFixed(2)}% (24h)</span>
@@ -119,14 +119,14 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                         }}
                         className="w-full"
                     >
-                        <div className="flex justify-between items-center mb-2 px-1">
+                        <div className="flex justify-between items-center mb-2 px-2">
                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Swap Tokens</div>
                              <SwapSettings>
                                 <SwapSettingsSlippageTitle className="text-slate-300 font-bold">Max. Slippage</SwapSettingsSlippageTitle>
                                 <SwapSettingsSlippageDescription className="text-slate-500">
                                     Your swap will revert if the prices change by more than the selected percentage.
                                 </SwapSettingsSlippageDescription>
-                                <SwapSettingsSlippageInput className="bg-[#0e1627] border-slate-800 text-white" />
+                                <SwapSettingsSlippageInput className="bg-[#0e1627] border-slate-800 text-white rounded-xl" />
                             </SwapSettings>
                         </div>
                         
@@ -136,7 +136,7 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                                 swappableTokens={swappableTokens}
                                 token={defaultFromToken}
                                 type="from"
-                                className="bg-[#0e1627] border-none rounded-t-[20px] rounded-b-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
+                                className="bg-[#0e1627] border-none rounded-t-[24px] rounded-b-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
                             />
                             
                             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
@@ -148,31 +148,31 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
                                 swappableTokens={swappableTokens}
                                 token={defaultToToken}
                                 type="to"
-                                className="bg-[#0e1627] border-none rounded-b-[20px] rounded-t-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
+                                className="bg-[#0e1627] border-none rounded-b-[24px] rounded-t-[4px] p-4 transition-colors hover:bg-[#121b2e] shadow-inner"
                             />
                         </div>
                         
                         <div className="pt-4">
-                            <SwapButton className="w-full py-4 bg-blue-600 rounded-[16px] font-black uppercase tracking-widest text-sm hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all" />
+                            <SwapButton className="w-full py-4 bg-blue-600 rounded-[20px] font-black uppercase tracking-widest text-sm hover:bg-blue-500 shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all" />
                         </div>
 
                         <SwapMessage className="text-[10px] font-bold text-slate-400 mt-2 text-center" />
                         <SwapToast className="z-[100]" />
                     </Swap>
                 ) : (
-                    <div className="p-8 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-center space-y-6 shadow-2xl animate-in fade-in">
-                        <div className="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-2 border border-blue-500/30">
-                             <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.2-2.848.598-4.168a6 6 0 0111.804 0"></path></svg>
+                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 text-center space-y-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+                        <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center mx-auto mb-2 border border-blue-500/20 shadow-[0_0_30px_rgba(37,99,235,0.15)]">
+                             <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Connect to Trade</h3>
-                            <p className="text-xs font-medium text-slate-400 max-w-[200px] mx-auto leading-relaxed">
-                                Link your wallet to unlock the decentralized swap terminal and execute trades.
+                        <div className="space-y-3">
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Terminal Access</h3>
+                            <p className="text-xs font-medium text-slate-400 max-w-[240px] mx-auto leading-relaxed">
+                                Connect your wallet to access real-time swaps, advanced charting, and social alpha signals.
                             </p>
                         </div>
-                        <div className="flex justify-center">
+                        <div className="flex justify-center pt-2">
                             <Wallet>
-                                <ConnectWallet className="!bg-blue-600 !text-white !font-black !px-6 !py-3 !rounded-xl !h-auto hover:!bg-blue-500 !transition-all !shadow-lg !shadow-blue-500/20">
+                                <ConnectWallet className="!bg-blue-600 !text-white !font-black !px-8 !py-4 !rounded-2xl !h-auto hover:!bg-blue-500 !transition-all !shadow-xl !shadow-blue-500/20 !uppercase !tracking-widest !text-xs scale-100 hover:scale-105">
                                     <Avatar className="h-6 w-6 mr-2" />
                                     <Name />
                                 </ConnectWallet>
@@ -186,11 +186,11 @@ const Terminal: React.FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, 
 
       {activeTab === 'portfolio' && (
          <div className="space-y-4 animate-in fade-in">
-             <div className="w-full p-4 rounded-[20px] bg-[#0b1220] border border-white/5">
+             <div className="w-full p-4 rounded-[24px] bg-[#0b1220] border border-white/5">
                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Your Assets</h3>
                  <div className="space-y-2">
                     {/* In Production: Fetch real balances via wagmi hook or useBalance */}
-                    <div className="p-8 text-center text-slate-500 text-xs font-mono">
+                    <div className="p-12 text-center text-slate-500 text-xs font-mono border-2 border-dashed border-slate-800 rounded-2xl">
                          {isConnected ? "Loading specific asset balances..." : "Connect wallet to view assets"}
                     </div>
                  </div>
