@@ -49,12 +49,12 @@ const SearchIcon = () => (
 const TokenChip = ({ token, onClick }: { token: Token; onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:scale-95 transition-all pl-2 pr-3 py-1.5 rounded-full cursor-pointer select-none group border border-transparent hover:border-slate-600"
+    className="flex items-center gap-2 bg-[#1e293b] hover:bg-[#334155] active:scale-95 transition-all pl-1 pr-3 py-1.5 rounded-full cursor-pointer select-none group border border-transparent shadow-sm"
   >
-    <div className="w-6 h-6 rounded-full overflow-hidden bg-slate-950 border border-slate-700">
+    <div className="w-7 h-7 rounded-full overflow-hidden bg-slate-950 border border-slate-700/50">
         <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
     </div>
-    <span className="text-sm font-bold text-white tracking-tight group-hover:text-blue-200">{token.symbol}</span>
+    <span className="text-base font-bold text-white tracking-tight group-hover:text-blue-200">{token.symbol}</span>
     <span className="text-slate-400 group-hover:text-white transition-colors">
         <ChevronDownIcon />
     </span>
@@ -100,11 +100,11 @@ const TokenSelectorModal = ({
             />
             
             {/* Modal Content */}
-            <div className="bg-slate-900 w-full sm:w-[400px] sm:rounded-3xl rounded-t-[2rem] border border-slate-800 shadow-2xl pointer-events-auto animate-in slide-in-from-bottom-10 duration-300 flex flex-col max-h-[85vh] sm:max-h-[600px] overflow-hidden">
+            <div className="bg-[#0f172a] w-full sm:w-[400px] sm:rounded-[2rem] rounded-t-[2rem] border-t border-x border-white/10 shadow-2xl pointer-events-auto animate-in slide-in-from-bottom-10 duration-300 flex flex-col max-h-[85vh] overflow-hidden">
                 {/* Header */}
-                <div className="p-5 border-b border-slate-800/50 space-y-4 shrink-0">
-                    <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto sm:hidden opacity-50 mb-2" />
-                    <h3 className="text-lg font-black text-white text-center">Select Token</h3>
+                <div className="p-5 border-b border-white/5 space-y-4 shrink-0">
+                    <div className="w-12 h-1 bg-white/20 rounded-full mx-auto sm:hidden mb-2" />
+                    <h3 className="text-lg font-bold text-white text-center">Select Token</h3>
                     
                     {/* Search Input */}
                     <div className="relative group">
@@ -116,31 +116,32 @@ const TokenSelectorModal = ({
                             placeholder="Search name or address"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-white placeholder:text-slate-600 outline-none focus:border-blue-500 transition-all"
+                            className="w-full bg-[#1e293b] border border-transparent rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-white placeholder:text-slate-500 outline-none focus:bg-[#262f45] transition-all"
                             autoFocus
                         />
                     </div>
                 </div>
 
                 {/* Token List */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain pb-[env(safe-area-inset-bottom,2rem)]">
+                <div className="flex-1 overflow-y-auto p-2 space-y-1 overscroll-contain pb-[calc(env(safe-area-inset-bottom)+1rem)]">
                     {filtered.map((token) => (
                         <button
                             key={token.symbol}
                             onClick={() => { onSelect(token); onClose(); }}
-                            className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-800 active:bg-slate-800/80 transition-all group"
+                            className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all group"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 overflow-hidden relative">
                                     <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="text-left">
-                                    <div className="text-sm font-black text-white group-hover:text-blue-400 transition-colors">{token.name}</div>
-                                    <div className="text-xs font-mono font-bold text-slate-500">{token.symbol}</div>
+                                    <div className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{token.name}</div>
+                                    <div className="text-xs font-mono font-medium text-slate-500">{token.symbol}</div>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-xs font-mono text-slate-400">0.00</div>
+                                <div className="text-sm font-mono text-white">0.00</div>
+                                <div className="text-xs font-medium text-slate-500">$0.00</div>
                             </div>
                         </button>
                     ))}
@@ -378,37 +379,33 @@ const Terminal: FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, onInte
                         <Swap 
                             isSponsored={true}
                             onSuccess={onSwap}
-                            className="w-full space-y-3"
+                            className="w-full space-y-2"
                         >
-                            <div className="flex justify-between items-center px-1">
-                                 <h2 className="text-sm font-black text-white uppercase tracking-wider">Flash Swap</h2>
-                            </div>
-                            
                             <div className="flex flex-col relative gap-1">
-                                {/* Sell Input */}
-                                <div className="bg-slate-900 rounded-[2rem] p-5 border border-slate-800 transition-colors hover:border-slate-700 relative z-10">
-                                    <div className="flex justify-between mb-3">
-                                        <span className="text-xs font-bold text-slate-500">Sell</span>
-                                    </div>
-                                    <div className="flex justify-between items-center gap-4">
-                                        <div className="flex-1">
-                                            {/* Hide OCK Token Button via CSS className hack */}
-                                            <SwapAmountInput 
-                                                label=""
-                                                token={fromToken}
-                                                type="from"
-                                                className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
-                                            />
-                                        </div>
-                                        <TokenChip token={fromToken} onClick={() => setModalType('from')} />
-                                    </div>
+                                {/* Sell Card */}
+                                <div className="bg-[#0f172a] rounded-[1.25rem] p-4 border border-transparent hover:border-white/5 transition-colors relative z-10">
+                                     <div className="flex justify-between mb-3">
+                                         <label className="text-sm font-medium text-slate-400">Sell</label>
+                                     </div>
+                                     <div className="flex justify-between items-center gap-3">
+                                         <div className="flex-1 min-w-0">
+                                              <SwapAmountInput 
+                                                  label=""
+                                                  token={fromToken}
+                                                  type="from"
+                                                  className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
+                                              />
+                                         </div>
+                                         <TokenChip token={fromToken} onClick={() => setModalType('from')} />
+                                     </div>
+                                     <div className="mt-1 text-sm text-slate-500 font-medium">$0.00</div>
                                 </div>
 
                                 {/* Floating Swap Action */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                                     <button 
                                         onClick={handleManualSwap}
-                                        className="w-12 h-12 bg-[#020617] rounded-xl border-4 border-[#020617] text-slate-400 hover:text-white hover:bg-slate-900 transition-all flex items-center justify-center shadow-xl active:scale-95 group"
+                                        className="w-10 h-10 bg-[#020617] border-[3px] border-[#020617] rounded-xl text-slate-400 hover:text-white flex items-center justify-center transition-colors shadow-lg active:scale-95 group"
                                     >
                                         <div className="group-hover:rotate-180 transition-transform duration-500">
                                             <ArrowDownIcon />
@@ -416,31 +413,31 @@ const Terminal: FC<TerminalProps> = ({ onSwap, onSharePnL, onEarnSuccess, onInte
                                     </button>
                                 </div>
                                 
-                                {/* Buy Input */}
-                                <div className="bg-slate-900 rounded-[2rem] p-5 border border-slate-800 transition-colors hover:border-slate-700 relative z-10 pt-8">
-                                    <div className="flex justify-between mb-3">
-                                        <span className="text-xs font-bold text-slate-500">Buy</span>
-                                    </div>
-                                    <div className="flex justify-between items-center gap-4">
-                                        <div className="flex-1">
-                                            {/* Hide OCK Token Button via CSS className hack */}
-                                            <SwapAmountInput 
-                                                label=""
-                                                token={toToken}
-                                                type="to"
-                                                className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
-                                            />
-                                        </div>
-                                        <TokenChip token={toToken} onClick={() => setModalType('to')} />
-                                    </div>
+                                {/* Buy Card */}
+                                <div className="bg-[#0f172a] rounded-[1.25rem] p-4 border border-transparent hover:border-white/5 transition-colors relative z-10">
+                                     <div className="flex justify-between mb-3">
+                                         <label className="text-sm font-medium text-slate-400">Buy</label>
+                                     </div>
+                                     <div className="flex justify-between items-center gap-3">
+                                         <div className="flex-1 min-w-0">
+                                              <SwapAmountInput 
+                                                  label=""
+                                                  token={toToken}
+                                                  type="to"
+                                                  className="w-full !bg-transparent !border-none !p-0 [&_button]:!hidden !text-4xl !font-medium !text-white placeholder:!text-slate-600 font-mono"
+                                              />
+                                         </div>
+                                         <TokenChip token={toToken} onClick={() => setModalType('to')} />
+                                     </div>
+                                     <div className="mt-1 text-sm text-slate-500 font-medium">$0.00</div>
                                 </div>
                             </div>
                             
                             <div className="pt-2">
-                                <SwapButton className="w-full !py-5 !bg-[#0052FF] hover:!bg-[#0040DD] !text-white !rounded-[1.5rem] !font-black !text-base !uppercase !tracking-widest !shadow-lg !shadow-blue-600/20 active:!scale-[0.98] transition-all" />
+                                <SwapButton className="w-full !py-4 !bg-[#0052FF] hover:!bg-[#0040DD] !text-white !rounded-[1.25rem] !font-black !text-base !uppercase !tracking-widest !shadow-lg !shadow-blue-600/20 active:!scale-[0.98] transition-all" />
                             </div>
 
-                            <div className="mt-4">
+                            <div className="mt-2">
                                 <SwapMessage className="text-xs font-medium text-slate-400 text-center" />
                             </div>
                             <SwapToast className="z-[100]" />
