@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       rollupOptions: {
-        external: ['@google/genai'],
+        // external: ['@google/genai'], // Removed to bundle gemini sdk
       },
     },
     define: {

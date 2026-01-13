@@ -13,6 +13,9 @@ export const sdk = {
     }
   }),
   actions: {
+    ready: () => {
+      console.log('[MockSDK] App Ready');
+    },
     openUrl: (url: string) => {
       console.log('[MockSDK] Opening URL:', url);
       window.open(url, '_blank');

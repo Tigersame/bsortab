@@ -57,8 +57,12 @@ const App: FC = () => {
             username: context.user.username || prev.username,
           }));
         }
+        // Notify Farcaster that app is ready
+        if (sdk.actions && sdk.actions.ready) {
+            sdk.actions.ready();
+        }
       } catch (e) {
-        console.warn("Farcaster context unavailable");
+        console.warn("Farcaster context unavailable", e);
       }
       
       setIsReady(true);

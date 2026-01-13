@@ -1,14 +1,14 @@
 
-import React from 'react';
+import { FC, ReactNode } from 'react';
 import { ViewState } from '../types';
 
 interface LayoutProps {
   activeView: ViewState;
   onNavigate: (view: ViewState) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ activeView, onNavigate, children }) => {
+const Layout: FC<LayoutProps> = ({ activeView, onNavigate, children }) => {
   return (
     <div className="flex flex-col h-screen max-w-md mx-auto border-x border-slate-800 bg-slate-950 text-slate-50 relative overflow-hidden font-sans selection:bg-blue-500/30 shadow-2xl">
       {/* Header */}
